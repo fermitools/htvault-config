@@ -1,0 +1,214 @@
+From 63a543791fbae569c8ef8e1a5392521f4b141e3a Mon Sep 17 00:00:00 2001
+From: Dave Dykstra <2129743+DrDaveD@users.noreply.github.com>
+Date: Fri, 19 Jun 2020 11:33:09 -0500
+Subject: [PATCH 1/4] add oauth2_metadata option
+
+---
+ path_oidc.go | 12 ++++++++++++
+ path_role.go | 10 ++++++++++
+ 2 files changed, 22 insertions(+)
+
+diff --git a/path_oidc.go b/path_oidc.go
+index 3634560..6ffc1d1 100644
+--- a/path_oidc.go
++++ b/path_oidc.go
+@@ -217,6 +217,7 @@ func (b *jwtAuthBackend) pathCallback(ctx context.Context, req *logical.Request,
+ 
+ 	var rawToken string
+ 	var oauth2Token *oauth2.Token
++	oauth2Metadata := make(map[string]string)
+ 
+ 	code := d.Get("code").(string)
+ 	if code == noCode {
+@@ -240,6 +241,14 @@ func (b *jwtAuthBackend) pathCallback(ctx context.Context, req *logical.Request,
+ 		if !ok {
+ 			return logical.ErrorResponse(errTokenVerification + " No id_token found in response."), nil
+ 		}
++
++		for _, mdname := range role.Oauth2Metadata {
++			md, ok := oauth2Token.Extra(mdname).(string)
++			if !ok {
++				return logical.ErrorResponse(errTokenVerification + " No " + mdname + " found in response."), nil
++			}
++			oauth2Metadata[mdname] = md
++		}
+ 	}
+ 
+ 	if role.VerboseOIDCLogging {
+@@ -293,6 +302,9 @@ func (b *jwtAuthBackend) pathCallback(ctx context.Context, req *logical.Request,
+ 	for k, v := range alias.Metadata {
+ 		tokenMetadata[k] = v
+ 	}
++	for k, v := range oauth2Metadata {
++		tokenMetadata["oauth2_" + k] = v
++	}
+ 
+ 	auth := &logical.Auth{
+ 		Policies:     role.Policies,
+diff --git a/path_role.go b/path_role.go
+index 8216b7e..86daa01 100644
+--- a/path_role.go
++++ b/path_role.go
+@@ -122,6 +122,10 @@ Defaults to 60 (1 minute) if set to 0 and can be disabled if set to -1.`,
+ 				Type:        framework.TypeKVPairs,
+ 				Description: `Mappings of claims (key) that will be copied to a metadata field (value)`,
+ 			},
++			"oauth2_metadata": {
++				Type:        framework.TypeCommaStringSlice,
++				Description: `Comma-separated list of one or more of access_token, id_token, refresh_token to return in metadata`,
++			},
+ 			"user_claim": {
+ 				Type:        framework.TypeString,
+ 				Description: `The claim to use for the Identity entity alias name`,
+@@ -197,6 +201,7 @@ type jwtRole struct {
+ 	BoundClaimsType     string                 `json:"bound_claims_type"`
+ 	BoundClaims         map[string]interface{} `json:"bound_claims"`
+ 	ClaimMappings       map[string]string      `json:"claim_mappings"`
++	Oauth2Metadata      []string               `json:"oauth2_metadata"`
+ 	UserClaim           string                 `json:"user_claim"`
+ 	GroupsClaim         string                 `json:"groups_claim"`
+ 	OIDCScopes          []string               `json:"oidc_scopes"`
+@@ -303,6 +308,7 @@ func (b *jwtAuthBackend) pathRoleRead(ctx context.Context, req *logical.Request,
+ 		"bound_claims_type":     role.BoundClaimsType,
+ 		"bound_claims":          role.BoundClaims,
+ 		"claim_mappings":        role.ClaimMappings,
++		"oauth2_metadata":       role.Oauth2Metadata,
+ 		"user_claim":            role.UserClaim,
+ 		"groups_claim":          role.GroupsClaim,
+ 		"allowed_redirect_uris": role.AllowedRedirectURIs,
+@@ -489,6 +495,10 @@ func (b *jwtAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical.
+ 		role.ClaimMappings = claimMappings
+ 	}
+ 
++	if oauth2Metadata, ok := data.GetOk("oauth2_metadata"); ok {
++		role.Oauth2Metadata = oauth2Metadata.([]string)
++	}
++
+ 	if userClaim, ok := data.GetOk("user_claim"); ok {
+ 		role.UserClaim = userClaim.(string)
+ 	}
+
+From e74fccfd24ff90068ee6441bc1a40f55c9d9ea31 Mon Sep 17 00:00:00 2001
+From: Dave Dykstra <2129743+DrDaveD@users.noreply.github.com>
+Date: Fri, 24 Jul 2020 10:17:11 -0500
+Subject: [PATCH 2/4] move setting of oauth2metadata
+
+---
+ path_oidc.go | 20 +++++++++++---------
+ 1 file changed, 11 insertions(+), 9 deletions(-)
+
+diff --git a/path_oidc.go b/path_oidc.go
+index 6ffc1d1..a974261 100644
+--- a/path_oidc.go
++++ b/path_oidc.go
+@@ -217,7 +217,6 @@ func (b *jwtAuthBackend) pathCallback(ctx context.Context, req *logical.Request,
+ 
+ 	var rawToken string
+ 	var oauth2Token *oauth2.Token
+-	oauth2Metadata := make(map[string]string)
+ 
+ 	code := d.Get("code").(string)
+ 	if code == noCode {
+@@ -241,14 +240,6 @@ func (b *jwtAuthBackend) pathCallback(ctx context.Context, req *logical.Request,
+ 		if !ok {
+ 			return logical.ErrorResponse(errTokenVerification + " No id_token found in response."), nil
+ 		}
+-
+-		for _, mdname := range role.Oauth2Metadata {
+-			md, ok := oauth2Token.Extra(mdname).(string)
+-			if !ok {
+-				return logical.ErrorResponse(errTokenVerification + " No " + mdname + " found in response."), nil
+-			}
+-			oauth2Metadata[mdname] = md
+-		}
+ 	}
+ 
+ 	if role.VerboseOIDCLogging {
+@@ -266,6 +257,8 @@ func (b *jwtAuthBackend) pathCallback(ctx context.Context, req *logical.Request,
+ 	}
+ 	delete(allClaims, "nonce")
+ 
++	oauth2Metadata := make(map[string]string)
++
+ 	// If we have a token, attempt to fetch information from the /userinfo endpoint
+ 	// and merge it with the existing claims data. A failure to fetch additional information
+ 	// from this endpoint will not invalidate the authorization flow.
+@@ -279,6 +272,15 @@ func (b *jwtAuthBackend) pathCallback(ctx context.Context, req *logical.Request,
+ 			}
+ 			logFunc("error reading /userinfo endpoint", "error", err)
+ 		}
++
++		// Also fetch any requested extra oauth2 metadata
++		for _, mdname := range role.Oauth2Metadata {
++			md, ok := oauth2Token.Extra(mdname).(string)
++			if !ok {
++				return logical.ErrorResponse(errTokenVerification + " No " + mdname + " found in response."), nil
++			}
++			oauth2Metadata[mdname] = md
++		}
+ 	}
+ 
+ 	if role.VerboseOIDCLogging {
+
+From ecba4b2b21b0bcf23b1af9ad93486db37cccdcdb Mon Sep 17 00:00:00 2001
+From: Dave Dykstra <2129743+DrDaveD@users.noreply.github.com>
+Date: Wed, 19 Aug 2020 18:33:35 -0500
+Subject: [PATCH 3/4] prevent test from failing because of new oauth2_metadata
+
+---
+ path_role_test.go | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/path_role_test.go b/path_role_test.go
+index e5cef59..d1e36ec 100644
+--- a/path_role_test.go
++++ b/path_role_test.go
+@@ -760,6 +760,7 @@ func TestPath_Read(t *testing.T) {
+ 		"bound_claims_type":       "string",
+ 		"bound_claims":            map[string]interface{}(nil),
+ 		"claim_mappings":          map[string]string(nil),
++		"oauth2_metadata":         []string(nil),
+ 		"bound_subject":           "testsub",
+ 		"bound_audiences":         []string{"vault"},
+ 		"allowed_redirect_uris":   []string{"http://127.0.0.1"},
+
+From 887302056f0686e3123af0ca9be5e135e9929333 Mon Sep 17 00:00:00 2001
+From: Dave Dykstra <2129743+DrDaveD@users.noreply.github.com>
+Date: Fri, 21 Aug 2020 13:10:33 -0500
+Subject: [PATCH 4/4] add test for oauth2_metadata
+
+---
+ path_oidc_test.go | 12 +++++++++++-
+ 1 file changed, 11 insertions(+), 1 deletion(-)
+
+diff --git a/path_oidc_test.go b/path_oidc_test.go
+index fafc132..9a283f8 100644
+--- a/path_oidc_test.go
++++ b/path_oidc_test.go
+@@ -302,8 +302,17 @@ func TestOIDC_Callback(t *testing.T) {
+ 
+ 			auth := resp.Auth
+ 
++			if auth != nil {
++				// Can't predict the content of oauth2_id_token
++				//  so instead copy it.  This does at least
++				//  verify that it is present because if not it
++				//  introduces an empty value into expected.
++				expected.Metadata["oauth2_id_token"] =
++					auth.Metadata["oauth2_id_token"]
++			}
++
+ 			if !reflect.DeepEqual(auth, expected) {
+-				t.Fatalf("expected: %v, auth: %v", expected, resp)
++				t.Fatalf("expected: %v, resp: %v", expected, resp)
+ 			}
+ 		}
+ 	})
+@@ -996,6 +1005,7 @@ func getBackendAndServer(t *testing.T, boundCIDRs bool) (logical.Backend, logica
+ 			"/nested/secret_code": "bar",
+ 			"temperature":         "76",
+ 		},
++		"oauth2_metadata":       []string{"id_token"},
+ 	}
+ 
+ 	if boundCIDRs {

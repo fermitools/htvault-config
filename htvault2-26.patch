@@ -1,0 +1,55 @@
+diff --git a/pkg/backend/path.go b/pkg/backend/path.go
+index 1c5da40..1191f08 100644
+--- a/pkg/backend/path.go
++++ b/pkg/backend/path.go
+@@ -7,10 +7,11 @@ import (
+ 	"github.com/hashicorp/vault/sdk/logical"
+ )
+ 
+-// nameRegex allows most printable ASCII characters in path names that are not
+-// slashes.
+-func nameRegex(name string) string {
+-	return fmt.Sprintf(`(?P<%s>\w(([\w.@~!_,:^-]+)?\w)?)`, name)
++// nameRegex allows characters not special to urls or shells,
++//  plus any additional characters passed in as extras
++// Derived from framework.GenericNameWithAtRegex
++func nameRegex(name, extras string) string {
++	return fmt.Sprintf(`(?P<%s>\w(([\w.@~!_,`+extras+`:^-]+)?\w)?)`, name)
+ }
+ 
+ func pathsSpecial() *logical.Paths {
+diff --git a/pkg/backend/path_creds.go b/pkg/backend/path_creds.go
+index f1db615..91159a0 100644
+--- a/pkg/backend/path_creds.go
++++ b/pkg/backend/path_creds.go
+@@ -191,7 +191,7 @@ the access token will be available when reading the endpoint.
+ 
+ func pathCreds(b *backend) *framework.Path {
+ 	return &framework.Path{
+-		Pattern: credsPathPrefix + nameRegex("name") + `$`,
++		Pattern: credsPathPrefix + nameRegex("name", "/") + `$`,
+ 		Fields:  credsFields,
+ 		Operations: map[logical.Operation]framework.OperationHandler{
+ 			logical.ReadOperation: &framework.PathOperation{
+diff --git a/pkg/backend/path_self.go b/pkg/backend/path_self.go
+index 01f241b..e55eb4f 100644
+--- a/pkg/backend/path_self.go
++++ b/pkg/backend/path_self.go
+@@ -168,7 +168,7 @@ needed.
+ 
+ func pathSelf(b *backend) *framework.Path {
+ 	return &framework.Path{
+-		Pattern: selfPathPrefix + nameRegex("name") + `$`,
++		Pattern: selfPathPrefix + nameRegex("name", "") + `$`,
+ 		Fields:  selfFields,
+ 		Operations: map[logical.Operation]framework.OperationHandler{
+ 			logical.ReadOperation: &framework.PathOperation{
+@@ -213,7 +213,7 @@ the token endpoint of a client credentials flow.
+ 
+ func pathSelfConfig(b *backend) *framework.Path {
+ 	return &framework.Path{
+-		Pattern: selfPathPrefix + nameRegex("name") + `/config$`,
++		Pattern: selfPathPrefix + nameRegex("name", "") + `/config$`,
+ 		Fields:  selfConfigFields,
+ 		Operations: map[logical.Operation]framework.OperationHandler{
+ 			logical.ReadOperation: &framework.PathOperation{
