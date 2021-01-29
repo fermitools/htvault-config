@@ -1,0 +1,6 @@
+path "<vpath>/creds/{{identity.entity.aliases.<oidc>.name}}:*" {
+    capabilities = [ "list", "read", "update" ]
+}
+path "<vpath>/creds/{{identity.entity.aliases.<oidc>.name}}/*" {
+    capabilities = [ "list", "read", "update" ]
+}

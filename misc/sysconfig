@@ -1,0 +1,8 @@
+# Sets the maximum number of CPUs that can be executing Go threads simultaneously
+#GOMAXPROCS=0
+
+# Additional options to pass to Vault service binary
+#VAULT_SERVICE_OPTIONS=""
+
+# To enable debugging in main vault:
+#VAULT_SERVICE_OPTIONS="-log-level=trace"

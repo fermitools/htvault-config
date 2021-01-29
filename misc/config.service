@@ -1,0 +1,15 @@
+[Unit]
+Description=Vault configuration
+Requires=vault.service
+After=vault.service
+
+[Service]
+Type=oneshot
+# give vault service a chance to start up at boot
+ExecStart=/bin/bash -c "sleep 1;/usr/libexec/htvault-config/config.sh >>/var/log/htvault-config/startlog 2>&1"
+RemainAfterExit=yes
+TimeoutStartSec=600
+
+[Install]
+WantedBy=vault.service
+PartOf=vault.service

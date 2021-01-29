@@ -1,0 +1,5 @@
+/var/log/htvault-config/*log {
+    missingok
+    notifempty
+    delaycompress
+}

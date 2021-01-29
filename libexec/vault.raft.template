@@ -1,0 +1,13 @@
+storage "raft" {
+	path = "/var/lib/htvault-config"
+	retry_join {
+		leader_api_addr = "https://<peer1fqdn>:8200"
+		leader_ca_cert_file = "/etc/htvault-config/cacert.pem"
+	}
+	retry_join {
+		leader_api_addr = "https://<peer2fqdn>:8200"
+		leader_ca_cert_file = "/etc/htvault-config/cacert.pem"
+	}
+	node_id = "<myfqdn>"
+}
+cluster_addr = "https://<myfqdn>:8201"
