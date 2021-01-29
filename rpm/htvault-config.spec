@@ -40,6 +40,7 @@ Patch21: htvault2-24.patch
 Patch22: htvault2-26.patch
 
 Requires: vault
+Requires: jq
 
 BuildRequires: golang
 %if 0%{?rhel} == 7
@@ -52,7 +53,7 @@ BuildRequires: %{newgit}
 GOPATH=%{plugin1_name}-%{plugin1_version}/gopath
 if [ -d $GOPATH ]; then
     # make go cache deletable 
-    find $GOPATH -type d ! -perm -200|xargs chmod u+w
+    find $GOPATH -type d ! -perm -200|xargs -r chmod u+w
 fi
 %setup -q
 %setup -b 1 -n %{plugin1_name}-%{plugin1_version} -q
@@ -66,7 +67,8 @@ patch -p1 <%{PATCH12} || patch -p0 <path_oidc.go.rej
 %patch -P 22 -p1
 
 %description
-Installs plugins and configuration for Hashicorp Vault
+Installs plugins and configuration for Hashicorp Vault for use with
+htgettoken as a client.
 
 %build
 cd ../%{plugin1_name}-%{plugin1_version}
@@ -90,13 +92,44 @@ make
 cd ..
 
 %install
-cd ..
-PLUGINDIR=$RPM_BUILD_ROOT%{_libexecdir}/%{name}/plugins
+LIBEXECDIR=$RPM_BUILD_ROOT/%{_libexecdir}/%{name}
+PLUGINDIR=$LIBEXECDIR/plugins
 mkdir -p $PLUGINDIR
+cd ..
 cp %{plugin1_name}-%{plugin1_version}/bin/%{plugin1_name} $PLUGINDIR
 cp %{plugin2_name}-%{plugin2_version}/bin/%{plugin2_name} $PLUGINDIR
+cd %{name}-%{version}
+mkdir -p $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/config.d
+mkdir -p $RPM_BUILD_ROOT/%{_sysconfdir}/logrotate.d
+cp misc/logrotate $RPM_BUILD_ROOT/%{_sysconfdir}/logrotate.d/%{name}
+SYSCONFIGDIR=$RPM_BUILD_ROOT/%{_sysconfdir}/sysconfig
+mkdir -p $SYSCONFIGDIR
+SYSTEMDDIR=$RPM_BUILD_ROOT/lib/systemd/system
+mkdir -p $SYSTEMDDIR/vault.service.d $SYSTEMDDIR/vault.service.wants
+cp misc/systemd.conf $SYSTEMDDIR/vault.service.d/%{name}.conf
+cp misc/config.service $SYSTEMDDIR/%{name}.service
+cp misc/sysconfig $SYSCONFIGDIR/%{name}
+cp libexec/* $LIBEXECDIR
+mv $LIBEXECDIR/plugin-wrapper.sh $LIBEXECDIR/plugins
+ln -s plugin-wrapper.sh $LIBEXECDIR/plugins/%{plugin1_name}.sh
+ln -s plugin-wrapper.sh $LIBEXECDIR/plugins/%{plugin2_name}.sh
+mkdir -p $RPM_BUILD_ROOT%{_sharedstatedir}/%{name}
+mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/log/%{name}
+
+%post
+systemctl daemon-reload
 
 %files
-%{_libexecdir}/%name
+%attr(750, vault, vault) %{_sysconfdir}/%{name}
+%attr(750, root, root) %{_sysconfdir}/%{name}/config.d
+%{_sysconfdir}/logrotate.d/%{name}
+%config(noreplace) %{_sysconfdir}/sysconfig/%{name}
+/lib/systemd/system/%{name}.service
+/lib/systemd/system/vault.service.d/%{name}.conf
+%{_libexecdir}/%{name}
+%attr(750, vault, vault) %{_sharedstatedir}/%{name}
+%attr(750, root,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+* Fri Jan 29 2029 Dave Dykstra <dwd@fnal.gov> 0.1-1
+- Initial pre-release, including parameterization based on shell variables
