@@ -135,5 +135,5 @@ systemctl daemon-reload
 %attr(750, root,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
-* Fri Jan 29 2029 Dave Dykstra <dwd@fnal.gov> 0.1-1
+* Fri Jan 29 2021 Dave Dykstra <dwd@fnal.gov> 0.1-1
 - Initial pre-release, including parameterization based on shell variables
