@@ -38,9 +38,6 @@ Patch21: htvault2-24.patch
 # download with 
 #  $ curl -L -o htvault2-26.patch https://github.com/puppetlabs/vault-plugin-secrets-oauthapp/pull/26.diff
 Patch22: htvault2-26.patch
-# download with 
-#  $ curl -L -o htvault2-34.patch https://github.com/puppetlabs/vault-plugin-secrets-oauthapp/pull/34.diff
-Patch23: htvault2-34.patch
 
 Requires: vault
 Requires: jq
@@ -68,7 +65,6 @@ patch -p1 <%{PATCH12} || patch -p0 <path_oidc.go.rej
 %setup -b 2 -n %{plugin2_name}-%{plugin2_version} -q
 %patch -P 21 -p1
 %patch -P 22 -p1
-%patch -P 23 -p1
 
 %description
 Installs plugins and configuration for Hashicorp Vault for use with
