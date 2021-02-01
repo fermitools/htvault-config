@@ -1,0 +1,45 @@
+#!/bin/bash
+
+newgit="eval"
+if [[ "`lsb_release -rs`" =~ ^7\. ]]; then
+    newgit="scl enable rh-git218"
+fi
+for V in plugin1_name plugin1_version plugin2_name plugin2_version; do
+    eval "`sed -n "s/^%define $V /$V=/p" rpm/htvault-config.spec`"
+done
+
+BASE=htvault-config-downloads
+set -ex
+cd "`dirname $0`"
+for OLDBASE in $BASE-*; do
+    if [ -d $OLDBASE/gopath ]; then
+        GOPATH=$PWD/$OLDBASE/gopath go clean -modcache
+    fi
+done
+rm -rf $BASE-*
+BASE="$BASE-`sed -n 's/^%define downloads_version //p' rpm/htvault-config.spec`"
+mkdir $BASE
+cd $BASE
+mkdir gopath
+export GOPATH=$PWD/gopath
+curl -s https://codeload.github.com/hashicorp/${plugin1_name}/tar.gz/v${plugin1_version} | tar xzf -
+cd ${plugin1_name}-${plugin1_version}
+curl -sL https://github.com/hashicorp/$plugin1_name/pull/119.patch | patch -p1
+curl -sL https://github.com/hashicorp/$plugin1_name/pull/131.patch | patch -p1
+$newgit "make bootstrap"
+go mod vendor
+cd ..
+
+curl -s https://codeload.github.com/puppetlabs/${plugin2_name}/tar.gz/v${plugin2_version} | tar xzf -
+cd ${plugin2_name}-${plugin2_version}
+curl -sL https://github.com/puppetlabs/$plugin2_name/pull/24.diff | patch -p1
+curl -sL https://github.com/puppetlabs/$plugin2_name/pull/26.diff | patch -p1
+$newgit "make generate"
+go mod vendor
+cd ..
+cd ..
+
+rm -rf $GOPATH/pkg/mod/cache
+tar czf $BASE.tar.gz $BASE
+go clean -modcache
+rm -rf $BASE
