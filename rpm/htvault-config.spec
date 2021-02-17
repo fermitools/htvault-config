@@ -1,4 +1,4 @@
-%define downloads_version 1.0
+%define tarball_version 1.0
 %define plugin1_name vault-plugin-auth-jwt
 %define plugin1_version 0.7.3
 %define plugin2_name vault-plugin-secrets-oauthapp
@@ -10,7 +10,7 @@
 
 Summary: Configuration for Hashicorp Vault for use with htgettoken client
 Name: htvault-config
-Version: 0.2
+Version: 0.3
 Release: 1%{?dist}
 Group: Applications/System
 License: BSD
@@ -19,26 +19,27 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 # $ curl -o htvault-config-%{version}.tar.gz \
 #    https://codeload.github.com/fermitools/htvault-config/tar.gz/v%{version}
 Source0: %{name}-%{version}.tar.gz
-# create with ./make-downloads
-Source1: %{name}-downloads-%{downloads_version}.tar.gz
+# create with ./make-source-tarball
+Source1: %{name}-src-%{tarball_version}.tar.gz
 
-Requires: vault
+Requires: vault >= 1.6.2
 Requires: jq
 
 BuildRequires: golang
 
 %prep
 %setup -q
-%setup -q -T -b 1 -n %{name}-downloads-%{downloads_version}
+%setup -q -T -b 1 -n %{name}-src-%{tarball_version}
 
 %description
 Installs plugins and configuration for Hashicorp Vault for use with
 htgettoken as a client.
 
 %build
-# starts out in htgettoken-downloads
+# starts out in %{name}-src-%{tarball_version}
 export GOPATH=$PWD/gopath
 export PATH=$GOPATH/bin:$PATH
+export GOPROXY=file://$(go env GOMODCACHE)/cache/download
 cd %{plugin1_name}-%{plugin1_version}
 # skip the git in the build script
 ln -s /bin/true git
@@ -48,7 +49,7 @@ make
 cd ..
 
 %install
-# starts out in htgettoken-downloads
+# starts out in %{name}-src-%{tarball_version}
 LIBEXECDIR=$RPM_BUILD_ROOT/%{_libexecdir}/%{name}
 PLUGINDIR=$LIBEXECDIR/plugins
 mkdir -p $PLUGINDIR
@@ -87,6 +88,10 @@ systemctl daemon-reload
 %attr(750, root,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+* Wed Feb 17 2021 Dave Dykstra <dwd@fnal.gov> 0.3-1
+- Rename make-downloads to make-source-tarball and make it have more
+  in common with the vault-rpm build
+
 * Mon Feb 01 2021 Dave Dykstra <dwd@fnal.gov> 0.2-1
 - Pre-download and prepare all the go modules using new make-downloads
   script, so no network is needed during rpm build.

@@ -8,16 +8,17 @@ for V in plugin1_name plugin1_version plugin2_name plugin2_version; do
     eval "`sed -n "s/^%define $V /$V=/p" rpm/htvault-config.spec`"
 done
 
-BASE=htvault-config-downloads
+BASE=htvault-config-src
 set -ex
 cd "`dirname $0`"
 for OLDBASE in $BASE-*; do
     if [ -d $OLDBASE/gopath ]; then
+	# this is in case it wasn't fully created and chmodded
         GOPATH=$PWD/$OLDBASE/gopath go clean -modcache
     fi
 done
 rm -rf $BASE-*
-BASE="$BASE-`sed -n 's/^%define downloads_version //p' rpm/htvault-config.spec`"
+BASE="$BASE-`sed -n 's/^%define tarball_version //p' rpm/htvault-config.spec`"
 mkdir $BASE
 cd $BASE
 mkdir gopath
@@ -39,7 +40,7 @@ go mod vendor
 cd ..
 cd ..
 
-rm -rf $GOPATH/pkg/mod/cache
-tar czf $BASE.tar.gz $BASE
-go clean -modcache
+rm -rf $GOPATH/pkg/mod/cache/vcs
+find $GOPATH/pkg/mod -type d ! -perm -200|xargs chmod u+w
+tar --exclude .git -czf $BASE.tar.gz $BASE
 rm -rf $BASE
