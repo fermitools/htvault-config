@@ -214,7 +214,7 @@ for ISSUER in $ISSUERS; do
     VPATH=oidc-$ISSUER
     REDIRECT_URIS="https://$SERVICENAME:8200/v1/auth/$VPATH/oidc/callback"
 
-    for VAR in OIDC_CLIENT_ID OIDC_CLIENT_SECRET OIDC_SERVER_URL OIDC_SCOPES CALLBACKMODE CREDKEY GROUPSCLAIM; do
+    for VAR in OIDC_CLIENT_ID OIDC_CLIENT_SECRET OIDC_SERVER_URL OIDC_SCOPES OIDC_CALLBACKMODE OIDC_USERCLAIM OIDC_GROUPSCLAIM; do
         IVAR="${ISSUER}_$VAR"
         eval "$VAR=\"${!IVAR}\""
     done
@@ -229,14 +229,14 @@ for ISSUER in $ISSUERS; do
 	    default_role="default" \
 	    oidc_discovery_url="$OIDC_SERVER_URL" 
 
-	echo -n '{"claim_mappings": {"'$CREDKEY'" : "credkey"}, "oauth2_metadata": ["refresh_token"]}'| \
+	echo -n '{"claim_mappings": {"'$OIDC_USERCLAIM'" : "credkey"}, "oauth2_metadata": ["refresh_token"]}'| \
 	  vault write $VPATH/role/default - \
 	    role_type="oidc" \
-	    user_claim="$CREDKEY" \
-	    groups_claim="$GROUPSCLAIM" \
+	    user_claim="$OIDC_USERCLAIM" \
+	    groups_claim="$OIDC_GROUPSCLAIM" \
 	    oidc_scopes="$OIDC_SCOPES" \
 	    policies=default,oidcpolicy,tokencreatepolicy \
-	    callback_mode=$CALLBACKMODE \
+	    callback_mode=$OIDC_CALLBACKMODE \
 	    poll_interval=3 \
 	    allowed_redirect_uris="$REDIRECT_URIS" \
 	    verbose_oidc_logging=true
