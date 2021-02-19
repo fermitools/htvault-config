@@ -128,8 +128,13 @@ LDAPATTR="uid"
 This package also supports an option of 3 vault servers providing a
 single high-availablity service, using vault's
 [raft storage](https://learn.hashicorp.com/tutorials/vault/raft-storage)
-feature.  To configure it, set the following extra parameters, for
-example:
+feature.  To configure it, first you need to install the certificate of
+the CA that certifies the host certificates of your servers into
+`/etc/htvault-config/cacert.pem`.  This is needed so the servers can
+verify the identity of each other.  Just like the host key, make sure
+that it gets updated before it expires.
+
+Next, set the following extra parameters in parameters.sh, for example:
 ```
 CLUSTERFQDN="htvault.fnal.gov"
 CLUSTERMASTER="htvault1.fnal.gov"
