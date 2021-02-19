@@ -1,5 +1,6 @@
 # htconfig-vault
-Configure a Hashicorp Vault server for use with htgettoken.
+Configure a Hashicorp Vault server for use with 
+[htgettoken](https://github.com/fermitools/htgettoken).
 
 ## Installation
 
@@ -47,9 +48,6 @@ MYFQDN=`uname-n`
 
 ### OIDC/Oauth configuration
 
-There isn't currently a mechanism for configuring multiple roles per
-issuer.
-
 List the names of issuers you want to configure in a space-separated
 ISSUERS variable, and set parameters for each issuer in variables that
 begin with the issuer name followed by an underscore followed by
@@ -88,6 +86,17 @@ Note that the "device" callback mode is not available by default
 on the wlcg token issuer, you have to request it from the
 administrator.
 
+The above examples create one role for each issuer called "default".
+If you want to specify multiple roles with a different list of
+requested scopes for each, you can do that by declaring the
+OIDC_SCOPES variable as an array and setting the scopes for each
+role, for example:
+```
+declare -A cilogon_OIDC_SCOPES
+cilogon_OIDC_SCOPES[default]="profile,email,org.cilogon.userinfo,storage.read:,storage.create:"
+cilogon_OIDC_SCOPES[readonly]="profile,email,org.cilogon.userinfo,storage.read:"
+```
+
 ### Kerberos configuration
 
 If you want to configure Kerberos support, LDAP parameters need to be
@@ -124,4 +133,27 @@ LDAPATTR="uid"
 The configuration also supports an option of 3 vault servers providing
 a single high-availablity service, using vault's
 [raft storage](https://learn.hashicorp.com/tutorials/vault/raft-storage)
-feature.
+feature.  To configure it, set the following extra parameters,
+for example:
+```
+CLUSTERFQDN=htvault.fnal.gov
+CLUSTERMASTER=htvault1.fnal.gov
+PEER1FQDN=htvault2.fnal.gov
+PEER2FQDN=htvault3.fnal.gov
+```
+
+It is recommended to put all 3 servers behind a load balancer or
+DNS round-robin, and set that value as CLUSTERFQDN, although it can
+be tested by setting it to just one of the names.  In the testing case
+in order to use one of the peers give its name as the vault server
+to htgettoken -a and give the cluster name as the --vaultalias option.
+
+The full configuration should only be set on the CLUSTERMASTER server.
+The other servers only need these 4 settings.  They should each list
+the other two servers as their peers, for example on htvault2:
+```
+CLUSTERFQDN=htvault.fnal.gov
+CLUSTERMASTER=htvault1.fnal.gov
+PEER1FQDN=htvault1.fnal.gov
+PEER2FQDN=htvault3.fnal.gov
+```
