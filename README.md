@@ -39,7 +39,7 @@ called `/etc/htvault-config/config.d/parameters.sh`.
 
 First, set this required parameter:
 ```
-MYFQDN=`uname-n`
+MYFQDN="`uname-n`"
 ```
 
 ### OIDC/Oauth configuration
@@ -106,7 +106,7 @@ Fermilab:
 LDAPURL="ldaps://ldap.fnal.gov"
 LDAPDN="o=fnal"
 LDAPATTR="uid"
-KERBPOLICYDOMAIN=@fnal.gov
+KERBPOLICYDOMAIN="@fnal.gov"
 ```
 
 CERN:
@@ -131,10 +131,10 @@ single high-availablity service, using vault's
 feature.  To configure it, set the following extra parameters, for
 example:
 ```
-CLUSTERFQDN=htvault.fnal.gov
-CLUSTERMASTER=htvault1.fnal.gov
-PEER1FQDN=htvault2.fnal.gov
-PEER2FQDN=htvault3.fnal.gov
+CLUSTERFQDN="htvault.fnal.gov"
+CLUSTERMASTER="htvault1.fnal.gov"
+PEER1FQDN="htvault2.fnal.gov"
+PEER2FQDN="htvault3.fnal.gov"
 ```
 
 It is recommended to put all 3 servers behind a load balancer or DNS
@@ -149,8 +149,8 @@ The other servers only need these 4 settings.  They should each list the
 same CLUSTERFQDN and CLUSTERMASTER but set the other two servers as
 their peers, for example on htvault2:
 ```
-CLUSTERFQDN=htvault.fnal.gov
-CLUSTERMASTER=htvault1.fnal.gov
-PEER1FQDN=htvault1.fnal.gov
-PEER2FQDN=htvault3.fnal.gov
+CLUSTERFQDN="htvault.fnal.gov"
+CLUSTERMASTER="htvault1.fnal.gov"
+PEER1FQDN="htvault1.fnal.gov"
+PEER2FQDN="htvault3.fnal.gov"
 ```
