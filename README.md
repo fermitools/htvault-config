@@ -18,10 +18,9 @@ systemctl enable htvault-config
 Note that the htvault-config systemd service ties itself to vault so
 restarting the vault service will also do the config.  The
 htvault-config service can also be restarted independently without
-restarting vault, but by default any subcomponent that is already
-configured will not be reconfigured.  The output from configuration goes
-into `/var/log/htvault-config/startlog` and logging for vault itself
-goes to `/var/log/messages`. 
+restarting vault to reapply the configuration.  The output from
+configuration goes into `/var/log/htvault-config/startlog` and logging
+for vault itself goes to `/var/log/messages`. 
 
 ## Configuration
 
