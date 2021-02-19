@@ -192,7 +192,11 @@ for ISSUER in $ISSUERS; do
 
     for VAR in OIDC_CLIENT_ID OIDC_CLIENT_SECRET OIDC_SERVER_URL OIDC_SCOPES OIDC_CALLBACKMODE OIDC_USERCLAIM OIDC_GROUPSCLAIM; do
         IVAR="${ISSUER}_$VAR"
-        eval "$VAR=\"${!IVAR}\""
+        # this gives a way to copy any variable type including arrays
+        eval unset $VAR 2>/dev/null
+        if typeset temp=$(eval declare -p $IVAR 2>/dev/null); then
+            eval ${temp/$IVAR=/$VAR=}
+        fi
     done
 
     echo "Configuring $VPATH"
@@ -205,17 +209,26 @@ for ISSUER in $ISSUERS; do
         default_role="default" \
         oidc_discovery_url="$OIDC_SERVER_URL" 
 
-    echo -n '{"claim_mappings": {"'$OIDC_USERCLAIM'" : "credkey"}, "oauth2_metadata": ["refresh_token"]}'| \
-      vault write $VPATH/role/default - \
-        role_type="oidc" \
-        user_claim="$OIDC_USERCLAIM" \
-        groups_claim="$OIDC_GROUPSCLAIM" \
-        oidc_scopes="$OIDC_SCOPES" \
-        policies=default,oidcpolicy,tokencreatepolicy \
-        callback_mode=$OIDC_CALLBACKMODE \
-        poll_interval=3 \
-        allowed_redirect_uris="$REDIRECT_URIS" \
-        verbose_oidc_logging=true
+    for key in ${!OIDC_SCOPES[@]}; do
+        if [ "$key" = "0" ]; then
+            # this is the key you get if OIDC_SCOPES is not an array
+            role="default"
+        else
+            role=$key
+        fi
+        echo "Configuring $VPATH role $role with scopes ${OIDC_SCOPES[$role]}"
+        echo -n '{"claim_mappings": {"'$OIDC_USERCLAIM'" : "credkey"}, "oauth2_metadata": ["refresh_token"]}'| \
+          vault write $VPATH/role/$role - \
+            role_type="oidc" \
+            user_claim="$OIDC_USERCLAIM" \
+            groups_claim="$OIDC_GROUPSCLAIM" \
+            oidc_scopes="${OIDC_SCOPES[$key]}" \
+            policies=default,oidcpolicy,tokencreatepolicy \
+            callback_mode=$OIDC_CALLBACKMODE \
+            poll_interval=3 \
+            allowed_redirect_uris="$REDIRECT_URIS" \
+            verbose_oidc_logging=true
+    done
 
     VPATH=secret/oauth-$ISSUER
     echo "Configuring $VPATH"
