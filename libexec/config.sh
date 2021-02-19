@@ -2,17 +2,21 @@
 
 usage()
 {
-    echo 'Usage: config.sh -nowait [all|module_to_force ...]'
-    echo 'Policies are always regenerated from template and reloaded.'
-    echo 'By default, reconfigure only modules not yet configured.'
-    echo 'To force reconfiguring all modules, use "all".'
-    echo 'To force reconfiguring specific modules, pass them as parameters.'
-    echo 'May also force a type or issuer (before or after hyphen) instead of a module.'
-    echo 'The enabled modules are:'
-    echo "$ENABLEDMODS"
+    echo 'Usage: config.sh [-nowait]'
     echo "The -nowait option skips waiting for peers in multi-server config"
     exit 1
 } >&2
+
+
+NOWAIT=false
+if [ "$1" = "-nowait" ]; then
+    NOWAIT=true
+    shift
+fi
+
+if [ $# != 0 ]; then
+    usage
+fi
 
 echo
 echo "Starting vault configuration at `date`"
@@ -70,9 +74,7 @@ else
     fi
 fi
 
-if [ "$1" = "-nowait" ]; then
-    shift
-elif [ "`vault status -format=json|jq -r .storage_type`" = "raft" ]; then
+if ! $NOWAIT && [ "`vault status -format=json|jq -r .storage_type`" = "raft" ]; then
     TRY=0
     MAX=20
     while [ "$TRY" -lt "$MAX" ]; do
@@ -100,45 +102,19 @@ ENABLEDMODS="`
       egrep "(kerberos|oidc|oauth)"| \
        sed 's/"//g;s-/,--;s-[^ /]*/--'`"
 
-for ARG; do
-    case "$ARG" in
-	-*) usage;;
-    esac
-done
-
-echo "Enabled modules:"
-echo "$ENABLEDMODS"
-
 # remove newlines
 ENABLEDMODS="`echo $ENABLEDMODS`"
 
 FORCEMODS="$@"
 
-shouldconfig()
+modenabled()
 {
-    typeset MOD="${1##*/}"  # this is the equivalent of `basename $1`
     case " $ENABLEDMODS " in
-	*" $MOD "*)
-	    : it is enabled, see if it is to be forced
-	    if [ "$FORCEMODS" != all ]; then
-		for FORCEMOD in $FORCEMODS; do
-		    case " $MOD " in
-			*" $FORCEMOD "* | *"-$FORCEMOD "* | *" $FORCEMOD-"*)
-			    : force it
-			    echo "Configuring $MOD"
-			    return
-			    ;;
-		    esac
-		done
-		: not forced
-		return 1
-	    fi
-	    ;;
-
-	*)  : not enabled
-	    ;;
+	*" $1 "*)
+            return
+            ;;
     esac
-    echo "Configuring $MOD"
+    return 1
 }
 
 loadplugin()
@@ -152,7 +128,8 @@ loadplugin()
     fi
 }
 
-if [ -n "$LDAPURL" ] && shouldconfig kerberos; then
+if [ -n "$LDAPURL" ]; then
+    echo "Configuring kerberos"
     #run this to enable kerberos debugging (if kerberos plugin is installed)
     #loadplugin auth-kerberos auth/kerberos
 
@@ -172,7 +149,8 @@ if [ -n "$LDAPURL" ] && shouldconfig kerberos; then
 	userattr="$LDAPATTR" \
 	token_policies="kerberospolicy,tokencreatepolicy"
 fi
-if [ -n "$KERB2NAME" ] && shouldconfig kerberos-$KERB2NAME; then
+if [ -n "$KERB2NAME" ]; then
+    echo "Configuring kerberos-$KERB2NAME"
     vault auth disable kerberos-$KERB2NAME
     vault auth enable -path=kerberos-$KERB2NAME \
 	-passthrough-request-headers=Authorization \
@@ -202,12 +180,10 @@ done
 for TYPEMOD in auth/oidc secrets/oauthapp; do
     TYPE=${TYPEMOD%%/*}
     MOD=${TYPEMOD##*/}
-    case " $ENABLEDMODS " in
-        *" $MOD "*)
-            # this can happen during the first initialization
-            vault $TYPE disable $MOD
-            ;;
-    esac
+    if modenabled $MOD; then
+        # this can happen during the first initialization
+        vault $TYPE disable $MOD
+    fi
 done
 
 for ISSUER in $ISSUERS; do 
@@ -219,43 +195,40 @@ for ISSUER in $ISSUERS; do
         eval "$VAR=\"${!IVAR}\""
     done
 
-    if shouldconfig $VPATH; then
-	vault auth disable $VPATH
-	vault auth enable -path=$VPATH oidc
-	VPATH=auth/$VPATH
-	vault write $VPATH/config \
-	    oidc_client_id="$OIDC_CLIENT_ID" \
-	    oidc_client_secret="$OIDC_CLIENT_SECRET" \
-	    default_role="default" \
-	    oidc_discovery_url="$OIDC_SERVER_URL" 
+    echo "Configuring $VPATH"
+    vault auth disable $VPATH
+    vault auth enable -path=$VPATH oidc
+    VPATH=auth/$VPATH
+    vault write $VPATH/config \
+        oidc_client_id="$OIDC_CLIENT_ID" \
+        oidc_client_secret="$OIDC_CLIENT_SECRET" \
+        default_role="default" \
+        oidc_discovery_url="$OIDC_SERVER_URL" 
 
-	echo -n '{"claim_mappings": {"'$OIDC_USERCLAIM'" : "credkey"}, "oauth2_metadata": ["refresh_token"]}'| \
-	  vault write $VPATH/role/default - \
-	    role_type="oidc" \
-	    user_claim="$OIDC_USERCLAIM" \
-	    groups_claim="$OIDC_GROUPSCLAIM" \
-	    oidc_scopes="$OIDC_SCOPES" \
-	    policies=default,oidcpolicy,tokencreatepolicy \
-	    callback_mode=$OIDC_CALLBACKMODE \
-	    poll_interval=3 \
-	    allowed_redirect_uris="$REDIRECT_URIS" \
-	    verbose_oidc_logging=true
-    fi
+    echo -n '{"claim_mappings": {"'$OIDC_USERCLAIM'" : "credkey"}, "oauth2_metadata": ["refresh_token"]}'| \
+      vault write $VPATH/role/default - \
+        role_type="oidc" \
+        user_claim="$OIDC_USERCLAIM" \
+        groups_claim="$OIDC_GROUPSCLAIM" \
+        oidc_scopes="$OIDC_SCOPES" \
+        policies=default,oidcpolicy,tokencreatepolicy \
+        callback_mode=$OIDC_CALLBACKMODE \
+        poll_interval=3 \
+        allowed_redirect_uris="$REDIRECT_URIS" \
+        verbose_oidc_logging=true
 
     VPATH=secret/oauth-$ISSUER
-    if shouldconfig $VPATH; then
-	vault secrets disable $VPATH
+    echo "Configuring $VPATH"
+    if ! modenabled oauth-$ISSUER; then
+        # don't ever disable this because that causes secrets to be lost
 	vault secrets enable -path=$VPATH oauthapp
-	# echo -n '{"provider_options": {"auth_code_url": "'$OIDC_SERVER_URL/authorize'", "token_url": "'$OIDC_SERVER_URL/$TOKEN_ENDPOINT'"}}'| \
-
-	#echo -n '{"provider_options": {"issuer_url": "'$OIDC_SERVER_URL'", "auth_style": "in_header"}}'| \
-
-	vault write $VPATH/config \
-	    provider="oidc" \
-	    provider_options="issuer_url=$OIDC_SERVER_URL" \
-	    client_id="$OIDC_CLIENT_ID" \
-	    client_secret="$OIDC_CLIENT_SECRET"
     fi
+
+    vault write $VPATH/config \
+        provider="oidc" \
+        provider_options="issuer_url=$OIDC_SERVER_URL" \
+        client_id="$OIDC_CLIENT_ID" \
+        client_secret="$OIDC_CLIENT_SECRET"
 
     for POLICY in oidc kerberos kerberos2; do
 	POLICYISSUER="$POLICY"
