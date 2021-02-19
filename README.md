@@ -1,13 +1,14 @@
 # htconfig-vault
-Configure a Hashicorp Vault server for use with 
+This package configures a Hashicorp Vault server for use with 
 [htgettoken](https://github.com/fermitools/htgettoken).
 
 ## Installation
 
-The rpm is available in
-[OSG yum repositories](https://opensciencegrid.org/docs/common/yum/#install-the-osg-repositories), currently in osg-development.
+The rpm is available in the
+[Open Science Grid yum repositories](https://opensciencegrid.org/docs/common/yum/#install-the-osg-repositories), currently in osg-development.
 
-To install vault and htvault-config as root:
+After enabling the OSG repositories, do this as root to install vault
+and htvault-config:
 ```
 yum install --enablerepo=osg-development htvault-config
 systemctl enable vault
@@ -20,19 +21,14 @@ htvault-config service can also be restarted independently without
 restarting vault, but by default any subcomponent that is already
 configured will not be reconfigured.  The output from configuration goes
 into `/var/log/htvault-config/startlog` and logging for vault itself
-goes to `/var/log/messages`.  You can force reconfiguring of
-subcomponents by running `/usr/libexec/htvault-config/config.sh` as
-root.  Pass the `-h` option to it to see usage including a list of
-the subcomponents. Be aware that reconfiguring a component wipes out
-any stored data, so avoid reconfiguring the oauth subcomponents if you
-can because that's where refresh tokens are stored.
+goes to `/var/log/messages`. 
 
 ## Configuration
 
 If you want to enable debugging, uncomment the indicated line in
 `/etc/sysconfig/htvault-config`.
 
-Put x.509 host credentials in `/etc/htvault-config/hostcert.pem`
+Put X.509 host credentials in `/etc/htvault-config/hostcert.pem`
 and `/etc/htvault-config/hostkey.pem`.  The former should be
 world-readable and the latter should only be owned by the
 'vault' user id and mode 400.  For a production system make sure that
@@ -41,7 +37,7 @@ those credentials get renewed before expiry and vault gets restarted.
 Put most of the configuration for now in a new file you create
 called `/etc/htvault-config/config.d/parameters.sh`.
 
-First, set a required parameter:
+First, set this required parameter:
 ```
 MYFQDN=`uname-n`
 ```
@@ -82,9 +78,8 @@ cilogon_OIDC_CALLBACKMODE="direct"
 cilogon_OIDC_USERCLAIM="wlcg.credkey"
 ```
 
-Note that the "device" callback mode is not available by default
-on the wlcg token issuer, you have to request it from the
-administrator.
+Note that the "device" callback mode is not available by default on the
+wlcg token issuer, you have to request it from the administrator.
 
 The above examples create one role for each issuer called "default".
 If you want to specify multiple roles with a different list of
@@ -130,11 +125,11 @@ LDAPATTR="uid"
 
 ## High availability
 
-The configuration also supports an option of 3 vault servers providing
-a single high-availablity service, using vault's
+This package also supports an option of 3 vault servers providing a
+single high-availablity service, using vault's
 [raft storage](https://learn.hashicorp.com/tutorials/vault/raft-storage)
-feature.  To configure it, set the following extra parameters,
-for example:
+feature.  To configure it, set the following extra parameters, for
+example:
 ```
 CLUSTERFQDN=htvault.fnal.gov
 CLUSTERMASTER=htvault1.fnal.gov
@@ -142,15 +137,17 @@ PEER1FQDN=htvault2.fnal.gov
 PEER2FQDN=htvault3.fnal.gov
 ```
 
-It is recommended to put all 3 servers behind a load balancer or
-DNS round-robin, and set that value as CLUSTERFQDN, although it can
-be tested by setting it to just one of the names.  In the testing case
-in order to use one of the peers give its name as the vault server
-to htgettoken -a and give the cluster name as the --vaultalias option.
+It is recommended to put all 3 servers behind a load balancer or DNS
+round-robin, and set that value as CLUSTERFQDN, although it can be
+tested by setting CLUSTERFQDN to one of the individual server names.
+In the testing case in order to use one of the peers give its name as
+the vault server address to htgettoken -a and give the cluster name as
+the --vaultalias option.
 
 The full configuration should only be set on the CLUSTERMASTER server.
-The other servers only need these 4 settings.  They should each list
-the other two servers as their peers, for example on htvault2:
+The other servers only need these 4 settings.  They should each list the
+same CLUSTERFQDN and CLUSTERMASTER but set the other two servers as
+their peers, for example on htvault2:
 ```
 CLUSTERFQDN=htvault.fnal.gov
 CLUSTERMASTER=htvault1.fnal.gov
