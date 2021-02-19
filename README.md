@@ -5,12 +5,12 @@ This package configures a Hashicorp Vault server for use with
 ## Installation
 
 The rpm is available in the
-[Open Science Grid yum repositories](https://opensciencegrid.org/docs/common/yum/#install-the-osg-repositories), currently in osg-development.
+[Open Science Grid yum repositories](https://opensciencegrid.org/docs/common/yum/#install-the-osg-repositories), currently in osg-testing.
 
 After enabling the OSG repositories, do this as root to install vault
 and htvault-config:
 ```
-yum install --enablerepo=osg-development htvault-config
+yum install --enablerepo=osg-testing htvault-config
 systemctl enable vault
 systemctl enable htvault-config
 ```
