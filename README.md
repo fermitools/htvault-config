@@ -131,8 +131,8 @@ single high-availablity service, using vault's
 feature.  To configure it, first you need to install the certificate of
 the CA that certifies the host certificates of your servers into
 `/etc/htvault-config/cacert.pem`.  This is needed so the servers can
-verify the identity of each other.  Just like the host key, make sure
-that it gets updated before it expires.
+verify the identity of each other.  Just like the host certificate, make
+sure that it gets updated before it expires.
 
 Next, set the following extra parameters in parameters.sh, for example:
 ```
