@@ -29,7 +29,7 @@ If you want to enable debugging, uncomment the indicated line in
 
 Put X.509 host credentials in `/etc/htvault-config/hostcert.pem`
 and `/etc/htvault-config/hostkey.pem`.  The former should be
-world-readable and the latter should only be owned by the
+world-readable and the latter should be owned by the
 'vault' user id and mode 400.  For a production system make sure that
 those credentials get renewed before expiry and vault gets restarted.
 
