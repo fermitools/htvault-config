@@ -116,13 +116,6 @@ LDAPDN="OU=Users,OU=Organic Units,DC=cern,DC=ch"
 LDAPATTR="cn"
 ```
 
-LIGO:
-```
-LDAPURL="ldaps://ldap.ligo.org"
-LDAPDN="ou=people,dc=ligo,dc=org"
-LDAPATTR="uid"
-```
-
 ## High availability
 
 This package also supports an option of 3 vault servers providing a
