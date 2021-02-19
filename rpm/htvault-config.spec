@@ -10,7 +10,7 @@
 
 Summary: Configuration for Hashicorp Vault for use with htgettoken client
 Name: htvault-config
-Version: 0.4
+Version: 0.5
 Release: 1%{?dist}
 Group: Applications/System
 License: BSD
@@ -88,6 +88,11 @@ systemctl daemon-reload
 %attr(750, root,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+* Fri Feb 19 2021 Dave Dykstra <dwd@fnal.gov> 0.5-1
+- Always reconfigure everything when systemd service is started, just don't
+  disable/reenable oauthapp because that wipes out stored secrets.
+- Support multiple roles per issuer.
+
 * Thu Feb 18 2021 Dave Dykstra <dwd@fnal.gov> 0.4-1
 - Rename the few OIDC-related variables that didn't begin with OIDC to
   begin with OIDC.
