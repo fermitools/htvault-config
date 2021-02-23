@@ -2,6 +2,12 @@
 This package configures a Hashicorp Vault server for use with 
 [htgettoken](https://github.com/fermitools/htgettoken).
 
+In addition to making it easy to configure the server, it includes
+a modified Hashicorp vault plugin
+([vault-plugin-auth-jwt](https://github.com/hashicorp/vault-plugin-auth-jwt))
+and a vault plugin from Puppet Labs
+([vault-plugin-secrets-oauthapp](https://github.com/puppetlabs/vault-plugin-secrets-oauthapp)).
+
 ## Installation
 
 The rpm is available in the
@@ -78,7 +84,17 @@ cilogon_OIDC_USERCLAIM="wlcg.credkey"
 ```
 
 Note that the "device" callback mode is not available by default on the
-wlcg token issuer, you have to request it from the administrator.
+wlcg token issuer, you have to request it from the administrator.  If using
+the "direct" method (which is the standard OIDC code flow), register
+callback URIs of the form
+```
+https://<your.host.name>:8200/v1/auth/oidc-<issuer>/oidc/callback
+```
+where `<issuer>` is replaced by each issuer name configured and
+`<your.host.name>` is replaced by the fully qualified domain name of the
+vault service.  The token issuer does not need access to that port but
+web browsers of end users do, so the vault service may be behind a
+firewall if the clients are also behind that firewall.
 
 The above examples create one role for each issuer called "default".
 If you want to specify multiple roles with a different list of
