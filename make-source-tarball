@@ -25,8 +25,8 @@ mkdir gopath
 export GOPATH=$PWD/gopath
 curl -s https://codeload.github.com/hashicorp/${plugin1_name}/tar.gz/v${plugin1_version} | tar xzf -
 cd ${plugin1_name}-${plugin1_version}
-curl -sL https://github.com/hashicorp/$plugin1_name/pull/119.patch | patch -p1
-curl -sL https://github.com/hashicorp/$plugin1_name/pull/131.patch | patch -p1
+curl -sL https://github.com/hashicorp/$plugin1_name/pull/119.diff | patch -p1
+curl -sL https://github.com/hashicorp/$plugin1_name/pull/131.diff | patch -p1
 $newgit "make bootstrap"
 go mod vendor
 cd ..

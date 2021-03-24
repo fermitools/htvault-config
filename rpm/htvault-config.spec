@@ -1,6 +1,6 @@
-%define tarball_version 1.0
+%define tarball_version 1.1
 %define plugin1_name vault-plugin-auth-jwt
-%define plugin1_version 0.7.3
+%define plugin1_version 0.9.2
 %define plugin2_name vault-plugin-secrets-oauthapp
 %define plugin2_version 1.9.0
 
@@ -11,7 +11,7 @@
 Summary: Configuration for Hashicorp Vault for use with htgettoken client
 Name: htvault-config
 Version: 0.5
-Release: 1%{?dist}
+Release: 2%{?dist}
 Group: Applications/System
 License: BSD
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
@@ -88,6 +88,9 @@ systemctl daemon-reload
 %attr(750, root,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+* Mon Mar 22 2021 Dave Dykstra <dwd@fnal.gov> 0.5-2
+- Update vault-plugin-auth-jwt to version 0.9.2
+
 * Fri Feb 19 2021 Dave Dykstra <dwd@fnal.gov> 0.5-1
 - Always reconfigure everything when systemd service is started, just don't
   disable/reenable oauthapp because that wipes out stored secrets.
