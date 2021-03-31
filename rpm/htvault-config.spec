@@ -1,8 +1,8 @@
-%define tarball_version 1.1
+%define tarball_version 1.2
 %define plugin1_name vault-plugin-auth-jwt
 %define plugin1_version 0.9.2
 %define plugin2_name vault-plugin-secrets-oauthapp
-%define plugin2_version 1.9.0
+%define plugin2_version 1.10.0
 
 # This is to avoid
 #   *** ERROR: No build ID note found
@@ -11,7 +11,7 @@
 Summary: Configuration for Hashicorp Vault for use with htgettoken client
 Name: htvault-config
 Version: 0.5
-Release: 2%{?dist}
+Release: 3%{?dist}
 Group: Applications/System
 License: BSD
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
@@ -22,7 +22,7 @@ Source0: %{name}-%{version}.tar.gz
 # create with ./make-source-tarball
 Source1: %{name}-src-%{tarball_version}.tar.gz
 
-Requires: vault >= 1.6.2
+Requires: vault >= 1.7.0
 Requires: jq
 
 BuildRequires: golang
@@ -66,7 +66,7 @@ mkdir -p $SYSTEMDDIR/vault.service.d $SYSTEMDDIR/vault.service.wants
 cp misc/systemd.conf $SYSTEMDDIR/vault.service.d/%{name}.conf
 cp misc/config.service $SYSTEMDDIR/%{name}.service
 cp misc/sysconfig $SYSCONFIGDIR/%{name}
-cp libexec/* $LIBEXECDIR
+cp libexec/*.sh libexec/*.template $LIBEXECDIR
 mv $LIBEXECDIR/plugin-wrapper.sh $LIBEXECDIR/plugins
 ln -s plugin-wrapper.sh $LIBEXECDIR/plugins/%{plugin1_name}.sh
 ln -s plugin-wrapper.sh $LIBEXECDIR/plugins/%{plugin2_name}.sh
@@ -88,6 +88,10 @@ systemctl daemon-reload
 %attr(750, root,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+* Wed Mar 31 2021 Dave Dykstra <dwd@fnal.gov> 0.5-3
+- Update vault-plugin-secrets-oauthapp to version 1.10.0
+- Require at least vault-1.7.0
+
 * Mon Mar 22 2021 Dave Dykstra <dwd@fnal.gov> 0.5-2
 - Update vault-plugin-auth-jwt to version 0.9.2
 
