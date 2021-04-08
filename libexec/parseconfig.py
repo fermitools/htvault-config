@@ -58,8 +58,8 @@ def merge(old, new):
                     knownnames.add(oldval['name'])
                     combinedlist.append(oldval)
             else:
-                    debug('adding non-named dict')
-                    combinedlist.append(oldval)
+                debug('adding non-named dict')
+                combinedlist.append(oldval)
         for newval in new:
             if type(newval) is not dict or 'name' not in newval or newval['name'] not in knownnames:
                 debug('adding new item ' + str(newval) + ' to ' + str(knownnames))
@@ -86,5 +86,5 @@ for f in sorted(os.listdir(dir)):
         efatal('error merging data from ' + filename, e)
     debug('combined: ' + str(json.dumps(combined)))
 
-print(str(json.dumps(combined)))
+print(str(json.dumps(combined, indent=4, sort_keys=True)))
 
