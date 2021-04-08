@@ -2,7 +2,7 @@
 %define plugin1_name vault-plugin-auth-jwt
 %define plugin1_version 0.9.2
 %define plugin2_name vault-plugin-secrets-oauthapp
-%define plugin2_version 1.10.0
+%define plugin2_version 1.10.1
 
 # This is to avoid
 #   *** ERROR: No build ID note found
@@ -10,8 +10,8 @@
 
 Summary: Configuration for Hashicorp Vault for use with htgettoken client
 Name: htvault-config
-Version: 0.5
-Release: 3%{?dist}
+Version: 0.6
+Release: 1%{?dist}
 Group: Applications/System
 License: BSD
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
@@ -88,8 +88,10 @@ systemctl daemon-reload
 %attr(750, root,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
-* Wed Mar 31 2021 Dave Dykstra <dwd@fnal.gov> 0.5-3
-- Update vault-plugin-secrets-oauthapp to version 1.10.0
+* Thu Apr  8 2021 Dave Dykstra <dwd@fnal.gov> 0.6-1
+- Update vault-plugin-secrets-oauthapp to version 1.10.1, including
+    applying a bug fix for broken minimum_seconds option
+- Disable periodic refresh of credentials; make it be only on demand
 - Require at least vault-1.7.0
 
 * Mon Mar 22 2021 Dave Dykstra <dwd@fnal.gov> 0.5-2
