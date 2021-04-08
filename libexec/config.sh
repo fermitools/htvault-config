@@ -241,7 +241,8 @@ for ISSUER in $ISSUERS; do
         provider="oidc" \
         provider_options="issuer_url=$OIDC_SERVER_URL" \
         client_id="$OIDC_CLIENT_ID" \
-        client_secret="$OIDC_CLIENT_SECRET"
+        client_secret="$OIDC_CLIENT_SECRET" \
+        refresh_interval=0
 
     for POLICY in oidc kerberos kerberos2; do
 	POLICYISSUER="$POLICY"
