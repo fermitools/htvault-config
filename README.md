@@ -11,22 +11,14 @@ and a vault plugin from Puppet Labs
 ## Installation
 
 The rpm is available in the
-[Open Science Grid yum repositories](https://opensciencegrid.org/docs/common/yum/#install-the-osg-repositories), currently in osg-testing.
-
+[Open Science Grid yum repositories](https://opensciencegrid.org/docs/common/yum/#install-the-osg-repositories).
 After enabling the OSG repositories, do this as root to install vault
 and htvault-config:
 ```
-yum install --enablerepo=osg-testing htvault-config
+yum install htvault-config
 systemctl enable vault
 systemctl enable htvault-config
 ```
-
-Note that the htvault-config systemd service ties itself to vault so
-restarting the vault service will also do the config.  The
-htvault-config service can also be restarted independently without
-restarting vault to reapply the configuration.  The output from
-configuration goes into `/var/log/htvault-config/startlog` and logging
-for vault itself goes to `/var/log/messages`. 
 
 ## Configuration
 
@@ -131,7 +123,7 @@ LDAPDN="OU=Users,OU=Organic Units,DC=cern,DC=ch"
 LDAPATTR="cn"
 ```
 
-## High availability
+### High availability
 
 This package also supports an option of 3 vault servers providing a
 single high-availablity service, using vault's
@@ -167,3 +159,25 @@ CLUSTERMASTER="htvault1.fnal.gov"
 PEER1FQDN="htvault1.fnal.gov"
 PEER2FQDN="htvault3.fnal.gov"
 ```
+
+## Network accessibility
+
+The vault service listens on port 8200 so make sure that is open through
+iptables.  It needs to be accessible from all users' web browsers, so if
+all users are within a LAN it does not need to be accessible through
+firewalls to the internet.  On the other hand if it is a public server
+accessible from anywhere then it does need to have a firwall opening.
+
+## Starting the service
+
+The htvault-config systemd service ties itself to vault so starting or
+restarting the vault service will also apply the configuration.
+So to start the service simply do as root:
+```
+systemctl start vault
+```
+
+The htvault-config service can also be restarted independently without
+restarting vault to reapply the configuration.  The output from
+configuration goes into `/var/log/htvault-config/startlog` and logging
+for vault itself goes to `/var/log/messages`. 
