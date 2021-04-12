@@ -181,3 +181,16 @@ The htvault-config service can also be restarted independently without
 restarting vault to reapply the configuration.  The output from
 configuration goes into `/var/log/htvault-config/startlog` and logging
 for vault itself goes to `/var/log/messages`. 
+
+## Testing the service
+
+In order to test the service install
+[htgettoken](https://github.com/fermitols/htgettoken)
+on any machine that has access to port 8200 on the vault server.
+If you have a default service configured you should be able to get a
+token by simply running this as an unprivileged user:
+```
+htgettoken -a <your.host.name>
+```
+where `<your.host.name>` is replaced by the fully qualified domain
+name of your vault server.
