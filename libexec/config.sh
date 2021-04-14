@@ -43,12 +43,19 @@ if [ -n "$CLUSTERFQDN" ]; then
 fi
 
 if [ ! -f vaultseal.txt ] && $ISMASTER; then
-    # create a new DB
-    vault operator init -key-shares=1 -key-threshold=1 -format=json >keys.json
+    echo "Initializing database"
+    if ! vault operator init -key-shares=1 -key-threshold=1 -format=json >keys.json; then
+        echo "Failed to initialize vault DB" >&2
+        rm -f keys.json
+        exit 2
+    fi
     jq -r ".unseal_keys_b64[0]" keys.json >vaultseal.txt
     jq -r ".root_token" keys.json >~/.vault-token
     chmod 600 vaultseal.txt ~/.vault-token
-    rm -f keys.json
+    if [ ! -s vaultseal.txt ] || [ ! -s ~/.vault-token ]; then
+        echo "Failed to get unseal key or root vault token" >&2
+        exit 2
+    fi
 fi
 
 if vault status >/dev/null; then
@@ -242,7 +249,7 @@ for ISSUER in $ISSUERS; do
         provider_options="issuer_url=$OIDC_SERVER_URL" \
         client_id="$OIDC_CLIENT_ID" \
         client_secret="$OIDC_CLIENT_SECRET" \
-        refresh_interval=0
+        tune_refresh_check_interval_seconds=0
 
     for POLICY in oidc kerberos kerberos2; do
 	POLICYISSUER="$POLICY"
