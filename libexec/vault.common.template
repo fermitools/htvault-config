@@ -11,19 +11,19 @@ ui = true
 
 listener "tcp" {
 	/* for administration and inter-vault communication, unencrypted */
-	address = "localhost:8200"
+	address = "localhost:8202"
 	tls_disable = 1
 }
 
 listener "tcp" {
 	/* for clients on other machines */
-	address = "<myfqdn>:8200"
+	address = ":8200"
 	tls_cert_file = "/etc/htvault-config/hostcert.pem"
 	tls_key_file = "/etc/htvault-config/hostkey.pem"
 	tls_cipher_suites = "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"
 }
 
-api_addr = "http://localhost:8200"
+api_addr = "http://localhost:8202"
 
 # 1 week
 #default_lease_ttl = "168h"

@@ -33,7 +33,7 @@ if [ -n "$CLUSTERFQDN" ] && [ "$CLUSTERMASTER" != "$MYFQDN" ]; then
     ISMASTER=false
 fi
 SERVICENAME="${CLUSTERFQDN:-$MYFQDN}"
-export VAULT_ADDR=http://127.0.0.1:8200
+export VAULT_ADDR=http://127.0.0.1:8202
 LIBEXEC=/usr/libexec/htvault-config
 VARLIB=/var/lib/htvault-config
 cd $VARLIB
