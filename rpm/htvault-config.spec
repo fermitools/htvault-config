@@ -1,8 +1,8 @@
-%define tarball_version 1.2
+%define tarball_version 1.3
 %define plugin1_name vault-plugin-auth-jwt
 %define plugin1_version 0.9.2
 %define plugin2_name vault-plugin-secrets-oauthapp
-%define plugin2_version 1.10.1
+%define plugin2_version 2.0.0
 
 # This is to avoid
 #   *** ERROR: No build ID note found
@@ -10,7 +10,7 @@
 
 Summary: Configuration for Hashicorp Vault for use with htgettoken client
 Name: htvault-config
-Version: 0.6
+Version: 0.7
 Release: 1%{?dist}
 Group: Applications/System
 License: BSD
@@ -77,8 +77,8 @@ mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/log/%{name}
 systemctl daemon-reload
 
 %files
-%attr(750, vault, vault) %{_sysconfdir}/%{name}
-%attr(750, root, root) %{_sysconfdir}/%{name}/config.d
+%dir %attr(750, vault, vault) %{_sysconfdir}/%{name}
+%dir %attr(750, root, root) %{_sysconfdir}/%{name}/config.d
 %{_sysconfdir}/logrotate.d/%{name}
 %config(noreplace) %{_sysconfdir}/sysconfig/%{name}
 /lib/systemd/system/%{name}.service
@@ -88,6 +88,14 @@ systemctl daemon-reload
 %attr(750, root,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+* Thu Apr 15 2021 Dave Dykstra <dwd@fnal.gov> 0.7-1
+- Update to vault-plugin-secrets-oauthapp version 2.0.0
+- Update to final version of PR for periodic refresh of credentials
+- Move the 'PartOf' rule in htvault-config.service to the correct section.
+- Prevent vault DB initialization failure from blocking future attempts.
+- Change to have vault listen on all interfaces with tls for port 8200,
+  and to use port 8202 for non-tls localhost access.
+
 * Thu Apr  8 2021 Dave Dykstra <dwd@fnal.gov> 0.6-1
 - Update vault-plugin-secrets-oauthapp to version 1.10.1, including
     applying a bug fix for broken minimum_seconds option
