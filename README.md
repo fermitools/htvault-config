@@ -8,6 +8,11 @@ a modified Hashicorp vault plugin
 and a vault plugin from Puppet Labs
 ([vault-plugin-secrets-oauthapp](https://github.com/puppetlabs/vault-plugin-secrets-oauthapp)).
 
+Security note: the current implementation uses shell commands which
+causes secrets to show up temporarily in the ps list.  To protect the
+secrets, install this on a machine where only trusted individuals may
+log in.
+
 ## Installation
 
 The rpm is available in the
