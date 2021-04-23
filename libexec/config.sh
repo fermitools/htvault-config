@@ -1,4 +1,8 @@
 #!/bin/bash
+#
+# Note to modifier: watch out for any secrets showing up on the command line,
+#  because those can be seen in a 'ps'
+#
 
 usage()
 {
@@ -76,12 +80,21 @@ else
     TRY=0
     MAX=20
     while [ "$TRY" -lt "$MAX" ]; do
-	vault operator unseal `cat vaultseal.txt`
-	if vault status >/dev/null; then
+        # "vault operator unseal" has no way to hide secret from command line
+        #  so use API.
+        OUT=$(curl -sS -X PUT -d @- $VAULT_ADDR/v1/sys/unseal <<EOF
+            { "key" : "$(< vaultseal.txt)" }
+EOF
+        )
+        if [ "$(echo "$OUT"|jq .sealed)" = "false" ]; then
 	    break
 	fi
 	let TRY+=1
 	echo "Unseal try $TRY failed"
+        ERR="$(echo "$OUT"|jq .errors)"
+        if [ -n "$ERR" ] && [ "$ERR" != null ]; then
+            echo "$ERR"
+        fi
 	sleep 1
     done
     if [ "$TRY" -eq "$MAX" ]; then
@@ -205,18 +218,22 @@ for ISSUER in $_issuers; do
     vault auth disable $VPATH
     vault auth enable -path=$VPATH oidc
     VPATH=auth/$VPATH
-    vault write $VPATH/config \
-        oidc_client_id="$clientid" \
-        oidc_client_secret="$secret" \
-        default_role="default" \
-        oidc_discovery_url="$url" 
+    # use here doc and json input to avoid secrets on command line
+    vault write $VPATH/config - \
+        default_role=default \
+        oidc_discovery_url="$url" \
+        <<EOF
+        {
+            "oidc_client_id": "$clientid",
+            "oidc_client_secret": "$secret"
+        }
+EOF
 
     for ROLE in $roles; do
         eval scopes="\$_issuers_${ISSUER}_roles_${ROLE}_scopes"
-
+        # use some json input in order to have nested parameters
         echo "Configuring $VPATH role $ROLE with scopes $scopes"
-        echo -n '{"claim_mappings": {"'$OIDC_USERCLAIM'" : "credkey"}, "oauth2_metadata": ["refresh_token"]}'| \
-          vault write $VPATH/role/$ROLE - \
+        vault write $VPATH/role/$ROLE - \
             role_type="oidc" \
             user_claim="$credclaim" \
             groups_claim="" \
@@ -225,7 +242,13 @@ for ISSUER in $_issuers; do
             callback_mode="${callbackmode:-device}" \
             poll_interval=3 \
             allowed_redirect_uris="$REDIRECT_URIS" \
-            verbose_oidc_logging=true
+            verbose_oidc_logging=true \
+            <<EOF
+            {
+                "claim_mappings": { "$credclaim" : "credkey" },
+                "oauth2_metadata": ["refresh_token"]
+            }
+EOF
     done
 
     VPATH=secret/oauth-$ISSUER
@@ -235,12 +258,16 @@ for ISSUER in $_issuers; do
 	vault secrets enable -path=$VPATH oauthapp
     fi
 
-    vault write $VPATH/config \
+    vault write $VPATH/config - \
         provider="oidc" \
         provider_options="issuer_url=$url" \
-        client_id="$clientid" \
-        client_secret="$secret" \
-        tune_refresh_check_interval_seconds=0
+        tune_refresh_check_interval_seconds=0 \
+        <<EOF
+        {
+            "client_id": "$clientid",
+            "client_secret": "$secret"
+        }
+EOF
 
     ISFIRST=true
     for POLICY in $POLICIES; do
