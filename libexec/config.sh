@@ -299,7 +299,7 @@ for POLICY in tokencreate; do
 done
 
 echo "Loading policies"
-for POLICY in oidc kerberos kerberos2 tokencreate; do
+for POLICY in $POLICIES tokencreate; do
     if [ -f ${POLICY}policy.hcl ]; then
 	chmod a-w ${POLICY}policy.hcl
 	vault policy write ${POLICY}policy ${POLICY}policy.hcl
