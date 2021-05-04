@@ -24,11 +24,14 @@ def convertbash(pfx,data):
             convertbash(pfx, ' '.join([item['name'] for item in data]))
             for item in data:
                 name = item['name']
+                del item['name']
                 convertbash(pfx + '_' + name, item)
         else:
             convertbash(pfx, ' '.join([collapsestr(item) for item in data]))
-    else:
+    elif data is not None:
         print(pfx + '="' + str(data) + '"')
+    else:
+        print(pfx + '=""')
 
 
 def main():
