@@ -8,9 +8,12 @@
 #   *** ERROR: No build ID note found
 %define debug_package %{nil}
 
+# This is so brp-python-bytecompile uses python3
+%define __python python3
+
 Summary: Configuration for Hashicorp Vault for use with htgettoken client
 Name: htvault-config
-Version: 0.7
+Version: 1.0
 Release: 1%{?dist}
 Group: Applications/System
 License: BSD
@@ -22,7 +25,7 @@ Source0: %{name}-%{version}.tar.gz
 # create with ./make-source-tarball
 Source1: %{name}-src-%{tarball_version}.tar.gz
 
-Requires: vault >= 1.7.0
+Requires: vault >= 1.7.1
 Requires: jq
 
 BuildRequires: golang
@@ -66,7 +69,7 @@ mkdir -p $SYSTEMDDIR/vault.service.d $SYSTEMDDIR/vault.service.wants
 cp misc/systemd.conf $SYSTEMDDIR/vault.service.d/%{name}.conf
 cp misc/config.service $SYSTEMDDIR/%{name}.service
 cp misc/sysconfig $SYSCONFIGDIR/%{name}
-cp libexec/*.sh libexec/*.template $LIBEXECDIR
+cp libexec/*.sh libexec/*.template libexec/*.py $LIBEXECDIR
 mv $LIBEXECDIR/plugin-wrapper.sh $LIBEXECDIR/plugins
 ln -s plugin-wrapper.sh $LIBEXECDIR/plugins/%{plugin1_name}.sh
 ln -s plugin-wrapper.sh $LIBEXECDIR/plugins/%{plugin2_name}.sh
@@ -88,6 +91,13 @@ systemctl daemon-reload
 %attr(750, root,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+* Tue May 4 2021 Dave Dykstra <dwd@fnal.gov> 1.0-1
+- Convert to using yaml files instead of shell variables to configure.
+- Only update the vault configuration for things that have changed in
+  the configuration, and include removing things that have been removed.
+- Keep secrets off command line to hide them from 'ps'.
+- Require at least vault-1.7.1
+
 * Thu Apr 15 2021 Dave Dykstra <dwd@fnal.gov> 0.7-1
 - Update to vault-plugin-secrets-oauthapp version 2.0.0
 - Update to final version of PR for periodic refresh of credentials
