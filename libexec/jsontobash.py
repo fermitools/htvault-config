@@ -28,8 +28,10 @@ def convertbash(pfx,data):
                 convertbash(pfx + '_' + name, item)
         else:
             convertbash(pfx, ' '.join([collapsestr(item) for item in data]))
-    else:
+    elif data is not None:
         print(pfx + '="' + str(data) + '"')
+    else:
+        print(pfx + '=""')
 
 
 def main():
