@@ -6,7 +6,6 @@ import yaml
 import json
 
 prog = 'parseconfig.py'
-dir = '/etc/htvault-config/config.d'
 
 def efatal(msg, e, code=1):
     print(prog + ': ' + msg + ': ' + str(e), file=sys.stderr)
@@ -20,6 +19,10 @@ combined = {}
 
 def merge(old, new):
     debug('type old: ' + str(type(old)) + ', type new: ' + str(type(new)))
+    if old is None:
+        return new
+    if new is None:
+        return old
     if type(new) is dict:
         if type(old) is not dict:
             raise Exception('type ' + str(type(new)) + ' does not match type ' + str(type(old)))
@@ -68,22 +71,28 @@ def merge(old, new):
     debug('returning non-dict non-list ' + str(new))
     return new
 
+files = []
+for f in sys.argv[1:]:
+    if os.path.isdir(f):
+        for f2 in sorted(os.listdir(f)):
+            files.append(f + '/' + f2)
+    else:
+        files.append(f)
 
-for f in sorted(os.listdir(dir)):
+for f in files:
     if f[-5:] != '.yaml':
         continue
-    filename = dir + '/' + f
     try:
-        with open(filename) as fd:
+        with open(f) as fd:
             data = yaml.load(fd)
     except Exception as e:
-        efatal('error loading yaml in ' + filename, e)
+        efatal('error loading yaml in ' + f, e)
                  
-    debug('merging ' + filename +': ' + str(json.dumps(data)))
+    debug('merging ' + f +': ' + str(json.dumps(data)))
     try:
         combined = merge(combined, data)
     except Exception as e:
-        efatal('error merging data from ' + filename, e)
+        efatal('error merging data from ' + f, e)
     debug('combined: ' + str(json.dumps(combined)))
 
 print(str(json.dumps(combined, indent=4, sort_keys=True)))
