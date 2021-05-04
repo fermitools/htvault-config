@@ -29,7 +29,7 @@ LIBEXEC=/usr/libexec/htvault-config
 VARLIB=/var/lib/htvault-config
 cd $VARLIB
 
-if $LIBEXEC/parseconfig.py > config.json.new; then
+if $LIBEXEC/parseconfig.py /etc/htvault-config/config.d > config.json.new; then
     if [ -f config.json ]; then
         mv config.json config.json.old
     fi
@@ -49,9 +49,9 @@ else
 fi
 
 if [ -f config.bash.old ]; then
-    . config.bash.old
+    . ./config.bash.old
 fi
-. config.bash
+. ./config.bash
 
 ISMASTER=true
 if [ -n "$_cluster_master" ] && [ "$_cluster_master" != "$_cluster_name" ]; then
@@ -171,23 +171,47 @@ loadplugin()
 
 POLICIES="oidc"
 ISFIRST=true
-OLDFIRSTKERBEROS=""
+OLDFIRSTKERBSERVICE=""
 if [ "$_old_kerberos" != "$_kerberos" ]; then
     # The kerberos list changed
+    # This is complicated because the first kerberos service is
+    #   just called "kerberos" instead of "kerberos-$KERBSERVICE"
+    #   and the first service can change
+    KERBNAMEDSERVICES=""
+    for KERBSERVICE in $_kerberos; do
+        if $ISFIRST; then
+            ISFIRST=false
+        else
+            KERBNAMEDSERVICES="$KERBNAMEDSERVICES $KERBSERVICE"
+        fi
+    done
+    ISFIRST=true
     for KERBSERVICE in $_old_kerberos; do
         if $ISFIRST; then
             ISFIRST=false
             OLDFIRSTKERBSERVICE="$KERBSERVICE"
-            KERBSUFFIX=""
-        else
+            if [ -z "$_kerberos" ]; then
+                # No kerberos any more
+                echo "Disabling kerberos"
+                vault auth disable kerberos
+                updateenabledmods
+            fi
+        elif ! [[ " $KERBNAMEDSERVICES " == *" $KERBSERVICE "* ]]; then
             KERBSUFFIX="-$KERBSERVICE"
-        fi
-        if ! [[ " $_kerberos " == *" $KERBSERVICE "* ]]; then
             echo "Disabling kerberos$KERBSUFFIX"
             vault auth disable kerberos$KERBSUFFIX
             updateenabledmods
+        fi
+        if ! [[ " $_kerberos " == *" $KERBSERVICE "* ]]; then
+            echo "Deleting kerberos${KERBSERVICE}policy"
+            vault policy delete kerberos${KERBSERVICE}policy
             rm -f kerberos${KERBSERVICE}policy.hcl
         fi
+    done
+else
+    for KERBSERVICE in $_old_kerberos; do
+        OLDFIRSTKERBSERVICE="$KERBSERVICE"
+        break
     done
 fi
 ISFIRST=true
@@ -211,7 +235,7 @@ for KERBSERVICE in $_kerberos; do
         vault auth enable -path=kerberos$KERBSUFFIX \
             -passthrough-request-headers=Authorization \
             -allowed-response-headers=www-authenticate kerberos
-    elif $ISFIRST && [ "$OLDFIRSTKERBSERVICE" != $KERBSERVICE ]; then 
+    elif [ -z "$KERBSUFFIX" ] && [ "$OLDFIRSTKERBSERVICE" != "$KERBSERVICE" ]; then 
         # first kerberos service name changed
         CHANGED=true
     elif [ ! -f config.json.old ] || [ $KEYTAB -nt config.json.old ]; then
@@ -221,7 +245,7 @@ for KERBSERVICE in $_kerberos; do
     for VAR in ldapattr ldapdn ldapurl; do
         eval $VAR=\"\$_kerberos_${KERBSERVICE}_$VAR\"
         eval old_$VAR=\"\$_old_kerberos_${KERBSERVICE}_$VAR\"
-        if eval [ "\$$VAR" != "\$old_$VAR" ]; then
+        if eval [ \"\$$VAR\" != \"\$old_$VAR\" ]; then
             CHANGED=true
         fi
     done
