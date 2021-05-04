@@ -54,11 +54,12 @@ fi
 . ./config.bash
 
 ISMASTER=true
-if [ -n "$_cluster_master" ] && [ "$_cluster_master" != "$_cluster_name" ]; then
+MYNAME="${_cluster_myname:-`uname -n`}"
+if [ -n "$_cluster_master" ] && [ "$_cluster_master" != "$MYNAME" ]; then
     ISMASTER=false
 fi
-SERVICENAME="${_cluster_master:-${_cluster_name:-`uname -n`}}"
-old_SERVICENAME="${_old_cluster_master:-${_old_cluster_name:-`uname -n`}}"
+SERVICENAME="${_cluster_name:-$MYNAME}"
+old_SERVICENAME="${_old_cluster_name:-${_old_cluster_myname:-`uname -n`}}"
 export VAULT_ADDR=http://127.0.0.1:8202
 
 if [ -n "$_cluster_master" ]; then

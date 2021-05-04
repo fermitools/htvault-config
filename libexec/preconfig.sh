@@ -31,13 +31,13 @@ if [ -n "$_cluster_master" ]; then
 else
     TMPLTYPE=single
 fi
-MYFQDN="${_cluster_master:-${_cluster_name:-`uname -n`}}"
+MYNAME="${_cluster_myname:-`uname -n`}"
 
 if [ -f vault.hcl ]; then
     mv vault.hcl vault.hcl.old
 fi
 cat $LIBEXEC/vault.common.template $LIBEXEC/vault.$TMPLTYPE.template \
-    | sed -e "s,<myfqdn>,$MYFQDN," \
+    | sed -e "s,<myfqdn>,$MYNAME," \
         -e "s,<clusterfqdn>,$_cluster_master," \
         -e "s,<peer1fqdn>,$_cluster_peer1," \
         -e "s,<peer2fqdn>,$_cluster_peer2," \
