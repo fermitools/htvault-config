@@ -14,7 +14,7 @@
 Summary: Configuration for Hashicorp Vault for use with htgettoken client
 Name: htvault-config
 Version: 1.0
-Release: 1%{?dist}
+Release: 2%{?dist}
 Group: Applications/System
 License: BSD
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
@@ -27,6 +27,7 @@ Source1: %{name}-src-%{tarball_version}.tar.gz
 
 Requires: vault >= 1.7.1
 Requires: jq
+Requires: python3-PyYAML
 
 BuildRequires: golang
 
@@ -91,6 +92,9 @@ systemctl daemon-reload
 %attr(750, root,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+* Wed May 5 2021 Dave Dykstra <dwd@fnal.gov> 1.0-2
+- Add Requires: python3-PyYAML
+
 * Tue May 4 2021 Dave Dykstra <dwd@fnal.gov> 1.0-1
 - Convert to using yaml files instead of shell variables to configure.
 - Only update the vault configuration for things that have changed in
