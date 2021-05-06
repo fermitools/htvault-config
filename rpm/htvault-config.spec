@@ -94,6 +94,9 @@ systemctl daemon-reload
 %changelog
 # - Correctly disable secret oauth module instead of incorrect auth module
 #    when something changes requiring clearing out of old secrets.
+# - Allow dashes in names by converting them in bash variables to
+    underscores, and reject any other non-alphanumeric or underscore in
+    names.
 
 * Wed May 5 2021 Dave Dykstra <dwd@fnal.gov> 1.0-2
 - Add Requires: python3-PyYAML

@@ -7,6 +7,7 @@
 
 import sys
 import json
+import re
 
 def collapsestr(item):
     if type(item) is dict and len(item) == 1 and next(iter(item.values())) is None:
@@ -15,17 +16,24 @@ def collapsestr(item):
         return(key + ':')
     return str(item)
 
+def checkbashvar(name):
+    modname = name.replace('-', '_')
+    if not re.match(r'^\w+$', modname):
+        print("Unacceptable character in name ", name, file=sys.stderr)
+        sys.exit(1)
+    return modname
+
 def convertbash(pfx,data):
     if type(data) is dict:
         for key in data:
-            convertbash(pfx + '_' + key, data[key])
+            convertbash(pfx + '_' + checkbashvar(key), data[key])
     elif type(data) is list:
         if len(data) > 0 and type(data[0]) is dict and 'name' in data[0]:
             convertbash(pfx, ' '.join([item['name'] for item in data]))
             for item in data:
                 name = item['name']
                 del item['name']
-                convertbash(pfx + '_' + name, item)
+                convertbash(pfx + '_' + checkbashvar(name), item)
         else:
             convertbash(pfx, ' '.join([collapsestr(item) for item in data]))
     elif data is not None:
