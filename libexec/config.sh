@@ -291,7 +291,7 @@ if [ "$_old_issuers" != "$_issuers" ]; then
         if ! [[ " $_issuers " == *" $ISSUER "* ]]; then
             echo "Disabling oidc-$ISSUER and secret/oauth-$ISSUER"
             vault auth disable oidc-$ISSUER
-            vault auth disable secret/oauth-$ISSUER
+            vault secrets disable secret/oauth-$ISSUER
             updateenabledmods
         fi
     done
@@ -391,7 +391,7 @@ EOF
                 # server or clientid changed, disable the module to
                 #  clear out all old secrets
                 echo "Disabling secret/oauth-$ISSUER"
-                vault auth disable secret/oauth-$ISSUER
+                vault secrets disable secret/oauth-$ISSUER
                 updateenabledmods
                 break
             fi

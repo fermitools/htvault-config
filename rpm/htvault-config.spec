@@ -92,6 +92,9 @@ systemctl daemon-reload
 %attr(750, root,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+# - Correctly disable secret oauth module instead of incorrect auth module
+#    when something changes requiring clearing out of old secrets.
+
 * Wed May 5 2021 Dave Dykstra <dwd@fnal.gov> 1.0-2
 - Add Requires: python3-PyYAML
 
