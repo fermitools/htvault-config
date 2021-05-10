@@ -1,4 +1,4 @@
-%define tarball_version 1.3
+%define tarball_version 1.4
 %define plugin1_name vault-plugin-auth-jwt
 %define plugin1_version 0.9.2
 %define plugin2_name vault-plugin-secrets-oauthapp
@@ -13,8 +13,8 @@
 
 Summary: Configuration for Hashicorp Vault for use with htgettoken client
 Name: htvault-config
-Version: 1.0
-Release: 2%{?dist}
+Version: 1.1
+Release: 1%{?dist}
 Group: Applications/System
 License: BSD
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
@@ -92,11 +92,15 @@ systemctl daemon-reload
 %attr(750, root,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
-# - Correctly disable secret oauth module instead of incorrect auth module
-#    when something changes requiring clearing out of old secrets.
-# - Allow dashes in names by converting them in bash variables to
-    underscores, and reject any other non-alphanumeric or underscore in
-    names.
+* Mon May 10 2021 Dave Dykstra <dwd@fnal.gov> 1.1-1
+- Correctly disable secret oauth module instead of incorrect auth module
+  when something changes requiring clearing out of old secrets.
+- Allow dashes in names by converting them in bash variables to
+  underscores, and reject any other non-alphanumeric or underscore in
+  names.
+- Fix bug in RFC8693 token exchange pull request to puppetlabs plugin
+  which caused comma-separated scopes to get sent to the token issuer
+  instead of space-separated scopes.
 
 * Wed May 5 2021 Dave Dykstra <dwd@fnal.gov> 1.0-2
 - Add Requires: python3-PyYAML
