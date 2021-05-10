@@ -244,8 +244,8 @@ for KERBSERVICE in $_kerberos; do
         CHANGED=true
     fi
     for VAR in ldapattr ldapdn ldapurl; do
-        eval $VAR=\"\$_kerberos_${KERBSERVICE}_$VAR\"
-        eval old_$VAR=\"\$_old_kerberos_${KERBSERVICE}_$VAR\"
+        eval $VAR=\"\$_kerberos_${KERBSERVICE//-/_}_$VAR\"
+        eval old_$VAR=\"\$_old_kerberos_${KERBSERVICE//-/_}_$VAR\"
         if eval [ \"\$$VAR\" != \"\$old_$VAR\" ]; then
             CHANGED=true
         fi
@@ -291,7 +291,7 @@ if [ "$_old_issuers" != "$_issuers" ]; then
         if ! [[ " $_issuers " == *" $ISSUER "* ]]; then
             echo "Disabling oidc-$ISSUER and secret/oauth-$ISSUER"
             vault auth disable oidc-$ISSUER
-            vault auth disable secret/oauth-$ISSUER
+            vault secrets disable secret/oauth-$ISSUER
             updateenabledmods
         fi
     done
@@ -301,8 +301,8 @@ for ISSUER in $_issuers; do
     REDIRECT_URIS="https://$SERVICENAME:8200/v1/auth/$VPATH/oidc/callback"
 
     for VAR in clientid secret url roles callbackmode credclaim; do
-        eval $VAR=\"\$_issuers_${ISSUER}_$VAR\"
-        eval old_$VAR=\"\$_old_issuers_${ISSUER}_$VAR\"
+        eval $VAR=\"\$_issuers_${ISSUER//-/_}_$VAR\"
+        eval old_$VAR=\"\$_old_issuers_${ISSUER//-/_}_$VAR\"
     done
 
     if modenabled $VPATH; then
@@ -358,8 +358,8 @@ EOF
     fi
 
     for ROLE in $roles; do
-        eval scopes=\"\$_issuers_${ISSUER}_roles_${ROLE}_scopes\"
-        eval old_scopes=\"\$_old_issuers_${ISSUER}_roles_${ROLE}_scopes\"
+        eval scopes=\"\$_issuers_${ISSUER//-/_}_roles_${ROLE//-/_}_scopes\"
+        eval old_scopes=\"\$_old_issuers_${ISSUER//-/_}_roles_${ROLE//-/_}_scopes\"
         if $ENABLED && ! $CHANGED && [ "$scopes" = "$old_scopes" ]; then
             continue
         fi
@@ -391,7 +391,7 @@ EOF
                 # server or clientid changed, disable the module to
                 #  clear out all old secrets
                 echo "Disabling secret/oauth-$ISSUER"
-                vault auth disable secret/oauth-$ISSUER
+                vault secrets disable secret/oauth-$ISSUER
                 updateenabledmods
                 break
             fi
@@ -437,7 +437,7 @@ EOF
             else
                 KERBSUFFIX="-$KERBSERVICE"
             fi
-            eval policydomain=\"\$_kerberos_${KERBSERVICE}_policydomain\"
+            eval policydomain=\"\$_kerberos_${KERBSERVICE//-/_}_policydomain\"
 	    TEMPLATEPOLICY=kerberos
 	    POLICYISSUER=kerberos$KERBSUFFIX
 	fi
