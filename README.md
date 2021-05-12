@@ -8,22 +8,20 @@ a modified Hashicorp vault plugin
 and a vault plugin from Puppet Labs
 ([vault-plugin-secrets-oauthapp](https://github.com/puppetlabs/vault-plugin-secrets-oauthapp)).
 
-Security note: the current implementation uses shell commands which
-causes secrets to show up temporarily in the ps list.  To protect the
-secrets, install this on a machine where only trusted individuals may
-log in.
-
 ## Installation
 
 The rpm is available in the
 [Open Science Grid yum repositories](https://opensciencegrid.org/docs/common/yum/#install-the-osg-repositories).
+The version described in the documentation on this page is currently in
+the osg-testing repository.
 After enabling the OSG repositories, do this as root to install vault
 and htvault-config:
 ```
-yum install htvault-config
+yum install --enablerepo=osg-testing htvault-config
 systemctl enable vault
 systemctl enable htvault-config
 ```
+
 
 ## Configuration
 
@@ -36,48 +34,108 @@ world-readable and the latter should be owned by the
 'vault' user id and mode 400.  For a production system make sure that
 those credentials get renewed before expiry and vault gets restarted.
 
-Put most of the configuration for now in a new file you create
-called `/etc/htvault-config/config.d/parameters.sh`.
+Configuration parameters are done in YAML and can be placed in any
+`/etc/htvault-config/config.d/*.yaml` file.  The files are processed
+in alphabetical order and options are merged from later files into
+earlier ones.  If the same parameters are set again in a later file
+it overrides the earlier one.  It is recommended to start the file
+names with two digit numbers to easily control the order.
 
-First, set this required parameter:
-```
-MYFQDN="`uname-n`"
-```
 
 ### OIDC/Oauth configuration
 
-List the names of issuers you want to configure in a space-separated
-ISSUERS variable, and set parameters for each issuer in variables that
-begin with the issuer name followed by an underscore followed by
-parameters (see example below for the specific parameters).  For each
-issuer register a client to get a client ID and secret.
+OIDC/Oauth configuration is done under an "issuers" top-level keyword.
+Each list item under that should have the following keywords:
 
-For example, to configure a wlcg issuer under its own name and the
-default name, and a cilogon issuer:
+`issuers` keywords
+| Keyword | Meaning |
+|:---     | :--     |
+| name | Issuer name |
+| clientid | OIDC Client ID |
+| secret  | OIDC Client secret |
+| url  | Issuer URL |
+| callbackmode | `direct` or `device` (optional, default `device`) |
+| credclaim | OIDC id token claim to use for credential key |
+| roles | List of roles |
+
+If you want a default issuer for htgettoken give that one the
+name `default`. 
+
+It may be more convenient for the sake of system configurators (e.g.
+puppet) to put the secrets all into a separate file, but if you do that
+remember if an issuer name is changed it has to be changed in both
+files. 
+
+If you want also want to support kerberos, the `credclaim` used for all
+issuers in a Vault instance sharing that kerberos for credential renewal
+must map to the user's kerberos ID.  See the discussion on
+`policydomain` below in the kerberos section to see whether or not the
+domain name should be included in the `credclaim` value.
+
+Each role under roles should have the following keywords:
+
+`roles` keywords
+| Keyword | Meaning |
+|:---     | :--     |
+| name | Role name |
+| scopes | List of scopes to request |
+
+There should be a role called `default` because htgettoken will use that
+role if no role is given to it.  The scopes list can be in any format
+that is accepted by YAML; the most convenient is probably
+comma-separated and surrounded by square brackets.  If there are
+characters that are special to YAML such as a colon in a scope value, the
+scope should be surrounded by double quotes (although a special case is
+that a scope can end with a colon without being quoted).
+
+Below are some example configuration files.
+
+20-cilogon.yaml
 ```
-ISSUERS="default wlcg cilogon"
+issuers:
+  - name: cilogon
+    clientid: xxx
+    url: https://cilogon.org
+    callbackmode: direct
+    credclaim: wlcg.credkey
+    roles:
+      - name: default
+        scopes: [profile,email,org.cilogon.userinfo,storage.read:,storage.create:]
+      - name: readonly
+        scopes: [profile,email,org.cilogon.userinfo,storage.read:]
+```
 
-default_OIDC_CLIENT_ID="xxx" 
-default_OIDC_CLIENT_SECRET="xxx"
-default_OIDC_SERVER_URL="https://wlcg.cloud.cnaf.infn.it/"
-default_OIDC_SCOPES="profile,email,offline_access,wlcg,wlcg.groups,storage.read:
-/,storage.modify:/,storage.create:/"
-default_OIDC_CALLBACKMODE="device"
-default_OIDC_USERCLAIM="email"
+20-wlcg.yaml
+```
+issuers:
+  - name: default
+    clientid: xxx
+    url: https://wlcg.cloud.cnaf.infn.it/
+    callbackmode: device
+    credclaim: email
+    roles:
+      - name: default
+        scopes: [profile,email,offline_access,wlcg,wlcg.groups,"storage.read:/","storage.modify:/","storage.create:/"]
+  - name: wlcg
+    clientid: xxx
+    url: https://wlcg.cloud.cnaf.infn.it/
+    callbackmode: direct
+    credclaim: email
+    roles:
+      - name: default
+        scopes: [profile,email,offline_access,wlcg,wlcg.groups,"storage.read:/","storage.modify:/","storage.create:/"]
 
-wlcg_OIDC_CLIENT_ID="$default_OIDC_CLIENT_ID" 
-wlcg_OIDC_CLIENT_SECRET="$default_OIDC_CLIENT_SECRET"
-wlcg_OIDC_SERVER_URL="$default_OIDC_SERVER_URL"
-wlcg_OIDC_SCOPES="$default_OIDC_SCOPES"
-wlcg_OIDC_CALLBACKMODE="direct"
-wlcg_OIDC_USERCLAIM="$default_OIDC_USERCLAIM"
+```
 
-cilogon_OIDC_CLIENT_ID="xxx"
-cilogon_OIDC_CLIENT_SECRET="xxx"
-cilogon_OIDC_SERVER_URL="https://test.cilogon.org"
-cilogon_OIDC_SCOPES="profile,email,org.cilogon.userinfo,storage.read:,storage.create:"
-cilogon_OIDC_CALLBACKMODE="direct"
-cilogon_OIDC_USERCLAIM="wlcg.credkey"
+80-secrets.yaml
+```
+issuers:
+  - name: cilogon
+    secret: xxx
+  - name: default
+    secret: xxx
+  - name: wlcg
+    secret: xxx
 ```
 
 Note that the "device" callback mode is not available by default on the
@@ -93,45 +151,75 @@ vault service.  The token issuer does not need access to that port but
 web browsers of end users do, so the vault service may be behind a
 firewall if the clients are also behind that firewall.
 
-The above examples create one role for each issuer called "default".
-If you want to specify multiple roles with a different list of
-requested scopes for each, you can do that by declaring the
-OIDC_SCOPES variable as an array and setting the scopes for each
-role, for example:
-```
-declare -A cilogon_OIDC_SCOPES
-cilogon_OIDC_SCOPES[default]="profile,email,org.cilogon.userinfo,storage.read:,storage.create:"
-cilogon_OIDC_SCOPES[readonly]="profile,email,org.cilogon.userinfo,storage.read:"
-```
 
 ### Kerberos configuration
 
-If you want to configure Kerberos support, LDAP parameters need to be
-set.  In addition, if you selected an OIDC id token scope as the
-OIDC_USERCLAIM that does not contain an @domain name (which is useful
-when wanting to support robot kerberos credentials) then set
-KERBPOLICYDOMAIN to the @domain.  As examples here are settings for a
-few Kerberos domains.
+If you want to configure Kerberos support use the `kerberos` top-level
+keyword.  Vault kerberos needs LDAP parameters to be set.  Here are the
+recognized keywords:
 
-Fermilab:
+`kerberos` keywords
+| Keyword | Meaning |
+|:---     | :--     |
+| name | kerberos service name |
+| ldapurl | URL of ldap server |
+| ldapdn | Base DN to use for user search |
+| ldapattr | Attribute matching user name |
+| policydomain | Policy domain (optional, default empty) |
+
+The Vault kerberos plugin can only map to Vault paths that include the
+`userid@domain` where "@domain" is the kerberos domain name.
+If you define issuer `credclaim`s whose values do not contain the
+"@domain" name (which is useful when supporting robot kerberos
+credentials) then set `policydomain` to "@domain" to make the Vault
+issuer permission policies add in that domain name.  In that way both
+kerberos and OIDC issuers will map to the same Vault storage paths,
+which is what is needed.
+
+More than one kerberos service may be defined.  htgettoken will use the
+first defined service by default, and its keytab will be read from
+`/etc/krb5.keytab`.  Subsequent services expect to find a keytab in
+`/etc/krb5-<name>.keytab` where `<name>` is the kerberos service name
+defined here.  To access the alternate kerberos service from htgettoken
+use its option `--kerbpath=auth/kerberos-<name>/login`.
+
+As examples here is a configuration for Fermilab supporting both fnal
+and ligo kerberos services, and another supporting a CERN kerberos
+service:
+
+10-kerberos.yaml for Fermilab
 ```
-LDAPURL="ldaps://ldap.fnal.gov"
-LDAPDN="o=fnal"
-LDAPATTR="uid"
-KERBPOLICYDOMAIN="@fnal.gov"
+kerberos:
+  - name: fnal
+    ldapurl: ldaps://ldap.fnal.gov
+    ldapdn: o=fnal
+    ldapattr: uid
+    policydomain: "@fnal.gov"
+  - name: ligo
+    ldapurl: ldaps://ldap.ligo.org
+    ldapdn: ou=people,dc=ligo,dc=org
+    ldapattr: uid
 ```
 
-CERN:
+10-kerberos.yaml for CERN
 ```
-LDAPURL="ldaps://xldap.cern.ch"
-LDAPDN="OU=Users,OU=Organic Units,DC=cern,DC=ch"
-LDAPATTR="cn"
+kerberos:
+  - name: cern
+    ldapurl: ldaps://xldap.cern.ch
+    ldapdn: OU=Users,OU=Organic Units,DC=cern,DC=ch
+    ldapattr: cn
 ```
+
+There's unfortunately not a standard way to discover these values.
+They vary per kerberos installation, but there is often some document
+available on the internet that shows the right values.  If not, contact
+the local administrators of kerberos and LDAP services.
+
 
 ### High availability
 
-This package also supports an option of 3 vault servers providing a
-single high-availablity service, using vault's
+This package also supports an option of 3 Vault servers providing a
+single high-availability service, using Vault's
 [raft storage](https://learn.hashicorp.com/tutorials/vault/raft-storage)
 feature.  To configure it, first you need to install the certificate of
 the CA that certifies the host certificates of your servers into
@@ -139,31 +227,56 @@ the CA that certifies the host certificates of your servers into
 verify the identity of each other.  Just like the host certificate, make
 sure that it gets updated before it expires.
 
-Next, set the following extra parameters in parameters.sh, for example:
+Next, set the following extra parameters under a `cluster` top-level
+keyword:
+
+`cluster` keywords
+| Keyword | Meaning |
+|:---     | :--     |
+| name | Cluster name |
+| master | Cluster master machine |
+| peer1 | First peer machine |
+| peer2 | Other peer machine |
+| myname | Current machine name (optional, default \`uname -n\`) |
+
+All of the keyword values should be fully qualified domain names.
+It is recommended to put all 3 machines behind a load balancer or DNS
+round-robin, and set the full value as `name`, although it can be
+tested by setting `name` to one of the individual machine names.
+In the testing case in order to test one of the peers give its name as
+the Vault server address to htgettoken `-a` and give the cluster name as
+the `--vaultalias` option.
+
+The `myname` keyword is only needed if \`uname -n\` does not match
+the fully qualified domain name of the current machine when accessing
+it externally.  That keyword may also be used in non-HA, single machine
+configurations for the same purpose.
+
+Here is an example:
+
+10-cluster.yaml
 ```
-CLUSTERFQDN="htvault.fnal.gov"
-CLUSTERMASTER="htvault1.fnal.gov"
-PEER1FQDN="htvault2.fnal.gov"
-PEER2FQDN="htvault3.fnal.gov"
+cluster:
+  name: htvault.fnal.gov
+  master: htvault1.fnal.gov
+  peer1: htvault2.fnal.gov
+  peer2: htvault3.fnal.gov
 ```
 
-It is recommended to put all 3 servers behind a load balancer or DNS
-round-robin, and set that value as CLUSTERFQDN, although it can be
-tested by setting CLUSTERFQDN to one of the individual server names.
-In the testing case in order to use one of the peers give its name as
-the vault server address to htgettoken -a and give the cluster name as
-the --vaultalias option.
+The full configuration should only be set on the `master` machine.  The
+other machines only need these cluster settings, no other configuration.
+They should each list the same cluster `name` and `master` but set the
+other two machines as their peers, for example on htvault2:
 
-The full configuration should only be set on the CLUSTERMASTER server.
-The other servers only need these 4 settings.  They should each list the
-same CLUSTERFQDN and CLUSTERMASTER but set the other two servers as
-their peers, for example on htvault2:
+10-cluster.yaml
 ```
-CLUSTERFQDN="htvault.fnal.gov"
-CLUSTERMASTER="htvault1.fnal.gov"
-PEER1FQDN="htvault1.fnal.gov"
-PEER2FQDN="htvault3.fnal.gov"
+cluster:
+  name: htvault.fnal.gov
+  master: htvault1.fnal.gov
+  peer1: htvault1.fnal.gov
+  peer2: htvault3.fnal.gov
 ```
+
 
 ## Network accessibility
 
@@ -173,9 +286,10 @@ all users are within a LAN it does not need to be accessible through
 firewalls to the internet.  On the other hand if it is a public server
 accessible from anywhere then it does need to have a firewall opening.
 
+
 ## Starting the service
 
-The htvault-config systemd service ties itself to vault so starting or
+The htvault-config systemd service ties itself to Vault, so starting or
 restarting the vault service will also apply the configuration.
 So to start the service simply do as root:
 ```
@@ -185,7 +299,10 @@ systemctl start vault
 The htvault-config service can also be restarted independently without
 restarting vault to reapply the configuration.  The output from
 configuration goes into `/var/log/htvault-config/startlog` and logging
-for vault itself goes to `/var/log/messages`. 
+for Vault itself goes to `/var/log/messages`.  Previous settings for all
+configuration parameters are saved, and only changed parameters are sent
+to Vault.
+
 
 ## Testing the service
 
@@ -198,4 +315,5 @@ token by simply running this as an unprivileged user:
 htgettoken -a <your.host.name>
 ```
 where `<your.host.name>` is replaced by the fully qualified domain
-name of your vault server.
+name of your Vault server.  Add `-i <issuer>` to select a specific
+issuer and `-i <role>` to select a specific role.
