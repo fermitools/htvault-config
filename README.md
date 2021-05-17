@@ -12,12 +12,10 @@ and a vault plugin from Puppet Labs
 
 The rpm is available in the
 [Open Science Grid yum repositories](https://opensciencegrid.org/docs/common/yum/#install-the-osg-repositories).
-The version described in the documentation on this page is currently in
-the osg-testing repository.
 After enabling the OSG repositories, do this as root to install vault
 and htvault-config:
 ```
-yum install --enablerepo=osg-testing htvault-config
+yum install htvault-config
 systemctl enable vault
 systemctl enable htvault-config
 ```
