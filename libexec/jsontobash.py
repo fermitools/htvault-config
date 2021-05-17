@@ -4,6 +4,9 @@
 #   variable defined listing the names.
 # If command line parameter given, it will be the prefix on all the
 #  variable names, default just an underscore.
+#
+# This source file is Copyright (c) 2021, FERMI NATIONAL
+#   ACCELERATOR LABORATORY.  All rights reserved.
 
 import sys
 import json

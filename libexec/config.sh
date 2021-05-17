@@ -3,6 +3,8 @@
 # Note to modifier: watch out for any secrets showing up on the command line,
 #  because those can be seen in a 'ps'
 #
+# This source file is Copyright (c) 2021, FERMI NATIONAL
+#   ACCELERATOR LABORATORY.  All rights reserved.
 
 usage()
 {

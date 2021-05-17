@@ -1,4 +1,9 @@
 #!/usr/bin/python3
+#
+# Read multiple yaml files output one combined json file
+#
+# This source file is Copyright (c) 2021, FERMI NATIONAL
+#   ACCELERATOR LABORATORY.  All rights reserved.
 
 import os
 import sys

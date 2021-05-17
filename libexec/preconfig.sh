@@ -1,5 +1,8 @@
 #!/bin/bash
 # Create vault.hcl from template
+#
+# This source file is Copyright (c) 2021, FERMI NATIONAL
+#   ACCELERATOR LABORATORY.  All rights reserved.
 
 LIBEXEC=/usr/libexec/htvault-config
 VARLIB=/var/lib/htvault-config
