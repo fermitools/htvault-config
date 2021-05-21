@@ -12,12 +12,10 @@ and a vault plugin from Puppet Labs
 
 The rpm is available in the
 [Open Science Grid yum repositories](https://opensciencegrid.org/docs/common/yum/#install-the-osg-repositories).
-The version described in the documentation on this page is currently in
-the osg-testing repository.
 After enabling the OSG repositories, do this as root to install vault
 and htvault-config:
 ```
-yum install --enablerepo=osg-testing htvault-config
+yum install htvault-config
 systemctl enable vault
 systemctl enable htvault-config
 ```
@@ -169,12 +167,14 @@ recognized keywords:
 
 The Vault kerberos plugin can only map to Vault paths that include the
 `userid@domain` where "@domain" is the kerberos domain name.
-If you define issuer `credclaim`s whose values do not contain the
-"@domain" name (which is useful when supporting robot kerberos
-credentials) then set `policydomain` to "@domain" to make the Vault
+If you define issuer `credclaim`s whose values contain the
+"@domain" name then set `policydomain` to "@domain" to make the Vault
 issuer permission policies add in that domain name.  In that way both
 kerberos and OIDC issuers will map to the same Vault storage paths,
-which is what is needed.
+which is what is needed.  The kerberos plugin does not include the
+domain name in storage paths on its own.  If the issuer `credclaim`s
+do not contain "@domain" then setting policydomain is not necessary
+(but causes no harm).
 
 More than one kerberos service may be defined.  htgettoken will use the
 first defined service by default, and its keytab will be read from
