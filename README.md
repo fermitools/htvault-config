@@ -66,9 +66,12 @@ files.
 
 If you want also want to support kerberos, the `credclaim` used for all
 issuers in a Vault instance sharing that kerberos for credential renewal
-must map to the user's kerberos ID.  See the discussion on
-`policydomain` below in the kerberos section to see whether or not the
-domain name should be included in the `credclaim` value.
+must map to the user's kerberos ID.  For that reason, the source of
+information for both the OIDC issuer and for the Kerberos Domain
+Controller (KDC) must ultimately be from the same database.  See the
+discussion on `policydomain` below in the kerberos section to see
+whether or not the domain name should be included in the `credclaim`
+value.
 
 Each role under roles should have the following keywords:
 
@@ -165,16 +168,16 @@ recognized keywords:
 | ldapattr | Attribute matching user name |
 | policydomain | Policy domain (optional, default empty) |
 
-The Vault kerberos plugin can only map to Vault paths that include the
-`userid@domain` where "@domain" is the kerberos domain name.
-If you define issuer `credclaim`s whose values contain the
-"@domain" name then set `policydomain` to "@domain" to make the Vault
-issuer permission policies add in that domain name.  In that way both
-kerberos and OIDC issuers will map to the same Vault storage paths,
-which is what is needed.  The kerberos plugin does not include the
-domain name in storage paths on its own.  If the issuer `credclaim`s
-do not contain "@domain" then setting policydomain is not necessary
-(but causes no harm).
+The Vault kerberos plugin strips away the kerberos domain name when
+mapping to vault secret storage paths and leaves only the `userid` from
+a `userid@domain`.  For that reason, if you define OIDC issuer
+`credclaim`s whose values contain a `@domain` name then set
+`policydomain` to `@domain` to make the vault kerberos permission
+policies add in that domain name.  In that way both kerberos and OIDC
+issuers will map to the same Vault storage paths, which is what is
+needed.  If the issuer `credclaim`s do not contain `@domain` then setting
+policydomain is not necessary (but causes no harm because the kerberos
+permission policies also always accepts paths without the `@domain`).
 
 More than one kerberos service may be defined.  htgettoken will use the
 first defined service by default, and its keytab will be read from
