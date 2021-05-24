@@ -66,7 +66,7 @@ files.
 
 If you want also want to support kerberos, the `credclaim` used for all
 issuers in a Vault instance sharing that kerberos for credential renewal
-must map to the user's kerberos ID.  For that reason, the source of
+must map to the users' kerberos IDs.  For that reason, the source of
 information for both the OIDC issuer and for the Kerberos Domain
 Controller (KDC) must ultimately be from the same database.  See the
 discussion on `policydomain` below in the kerberos section to see
@@ -156,17 +156,22 @@ firewall if the clients are also behind that firewall.
 ### Kerberos configuration
 
 If you want to configure Kerberos support use the `kerberos` top-level
-keyword.  Vault kerberos needs LDAP parameters to be set.  Here are the
-recognized keywords:
+keyword.  The Vault kerberos plugin needs LDAP parameters to be set.
+Here are the recognized keywords:
 
 `kerberos` keywords
 | Keyword | Meaning |
 |:---     | :--     |
 | name | kerberos service name |
-| ldapurl | URL of ldap server |
-| ldapdn | Base DN to use for user search |
-| ldapattr | Attribute matching user name |
+| ldapurl | URL of LDAP server |
+| ldapdn | Base DN to use for LDAP user search |
+| ldapattr | LDAP attribute matching user name |
 | policydomain | Policy domain (optional, default empty) |
+
+There's unfortunately not a standard way to discover values for the ldap
+keywords.  They vary per kerberos installation, but there is often some
+document available on the internet that shows the right values.  If not,
+contact the local administrators of kerberos and LDAP services.
 
 The Vault kerberos plugin strips away the kerberos domain name when
 mapping to vault secret storage paths and leaves only the `userid` from
@@ -177,10 +182,18 @@ policies add in that domain name.  In that way both kerberos and OIDC
 issuers will map to the same Vault storage paths, which is what is
 needed.  If the issuer `credclaim`s do not contain `@domain` then setting
 policydomain is not necessary (but causes no harm because the kerberos
-permission policies also always accepts paths without the `@domain`).
+permission policies also always accept paths without the `@domain`).
+
+Note that if an OIDC token issuer supports more than one Identity
+Provider (IdP), the htvault-config kerberos credential feature can only
+be used by the users that select the IdP that is from the same
+organization as the kerberos domain.  Also, in this case care must be
+taken to not use a credclaim that is always without `@domain` because
+then it might be possible for the same user id used by different
+people at different IdPs to map to the same Vault secrets path.
 
 More than one kerberos service may be defined.  htgettoken will use the
-first defined service by default, and its keytab will be read from
+first defined service by default, and Vault will read its keytab from
 `/etc/krb5.keytab`.  Subsequent services expect to find a keytab in
 `/etc/krb5-<name>.keytab` where `<name>` is the kerberos service name
 defined here.  To access the alternate kerberos service from htgettoken
@@ -197,7 +210,6 @@ kerberos:
     ldapurl: ldaps://ldap.fnal.gov
     ldapdn: o=fnal
     ldapattr: uid
-    policydomain: "@fnal.gov"
   - name: ligo
     ldapurl: ldaps://ldap.ligo.org
     ldapdn: ou=people,dc=ligo,dc=org
@@ -211,13 +223,27 @@ kerberos:
     ldapurl: ldaps://xldap.cern.ch
     ldapdn: OU=Users,OU=Organic Units,DC=cern,DC=ch
     ldapattr: cn
+    policydomain: "@cern.ch"
 ```
 
-There's unfortunately not a standard way to discover these values.
-They vary per kerberos installation, but there is often some document
-available on the internet that shows the right values.  If not, contact
-the local administrators of kerberos and LDAP services.
+The reason for the policydomain on the second example is to pair with
+an OIDC issuer `credclaim` of `eppn` (for eduPersonPrincipalName) which
+includes `@cern.ch`.
 
+#### Supporting kerberos robot credentials
+
+Some Kerberos installations support the use of "robot" credentials for
+unattended use cases, with kerberos principals of the form
+`user/purpose/machine.name`.  htvault-config and htgettoken support
+using them, if there is an OIDC `credclaim` that does not include the
+`@domain` for those who log in to the OIDC token issuer using an 
+Identity Provider (IdP) that matches the kerberos domain.  This is done
+by allowing access to vault paths that are of the form `user/*`,
+along with htgettoken option `--credkey user/purpose/machine.name`
+matching the kerberos principal.  For security reasons, if the OIDC
+token issuer accepts multiple IdPs then if one of those other IdPs
+are used the `credclaim` should include the IdP's `@domain` to avoid the
+possibility of overlapping user ids mapping to the same Vault paths.
 
 ### High availability
 
