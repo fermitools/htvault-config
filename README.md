@@ -237,7 +237,7 @@ unattended use cases, with kerberos principals of the form
 `user/purpose/machine.name`.  htvault-config and htgettoken support
 using them, if there is an OIDC `credclaim` that does not include the
 `@domain` for those who log in to the OIDC token issuer using an 
-Identity Provider (IdP) that matches the kerberos domain.  This is done
+IdP that matches the kerberos domain.  This is done
 by allowing access to vault paths that are of the form `user/*`,
 along with htgettoken option `--credkey user/purpose/machine.name`
 matching the kerberos principal.  For security reasons, if the OIDC
