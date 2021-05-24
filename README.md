@@ -238,7 +238,7 @@ unattended use cases, with kerberos principals of the form
 using them, if there is an OIDC `credclaim` that does not include the
 `@domain` for those who log in to the OIDC token issuer using an 
 IdP that matches the kerberos domain.  This is done
-by allowing access to vault paths that are of the form `user/*`,
+by allowing access to Vault paths that are of the form `user/*`,
 along with htgettoken option `--credkey user/purpose/machine.name`
 matching the kerberos principal.  For security reasons, if the OIDC
 token issuer accepts multiple IdPs then if one of those other IdPs
