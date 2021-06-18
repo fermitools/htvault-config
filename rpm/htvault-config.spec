@@ -1,6 +1,6 @@
-%define tarball_version 1.4
+%define tarball_version 1.5
 %define plugin1_name vault-plugin-auth-jwt
-%define plugin1_version 0.9.2
+%define plugin1_version 0.9.4
 %define plugin2_name vault-plugin-secrets-oauthapp
 %define plugin2_version 2.0.0
 
@@ -13,7 +13,7 @@
 
 Summary: Configuration for Hashicorp Vault for use with htgettoken client
 Name: htvault-config
-Version: 1.1
+Version: 1.2
 Release: 1%{?dist}
 Group: Applications/System
 License: BSD
@@ -25,7 +25,7 @@ Source0: %{name}-%{version}.tar.gz
 # create with ./make-source-tarball
 Source1: %{name}-src-%{tarball_version}.tar.gz
 
-Requires: vault >= 1.7.1
+Requires: vault >= 1.7.3
 Requires: jq
 Requires: python3-PyYAML
 
@@ -92,6 +92,11 @@ systemctl daemon-reload
 %attr(750, root,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+# Added license in COPYING file
+
+* Thu Jun 17 2021 Dave Dykstra <dwd@fnal.gov> 1.2-1
+- Update to vault-plugin-auth-jwt-0.9.4 and require vault-1.7.3
+
 * Mon May 10 2021 Dave Dykstra <dwd@fnal.gov> 1.1-1
 - Correctly disable secret oauth module instead of incorrect auth module
   when something changes requiring clearing out of old secrets.
