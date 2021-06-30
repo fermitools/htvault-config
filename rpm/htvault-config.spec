@@ -1,8 +1,8 @@
-%define tarball_version 1.5
+%define tarball_version 1.6
 %define plugin1_name vault-plugin-auth-jwt
 %define plugin1_version 0.9.4
 %define plugin2_name vault-plugin-secrets-oauthapp
-%define plugin2_version 2.0.0
+%define plugin2_version 2.1.0
 
 # This is to avoid
 #   *** ERROR: No build ID note found
@@ -92,7 +92,8 @@ systemctl daemon-reload
 %attr(750, root,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
-# Added license in COPYING file
+#- Added license in COPYING file
+#- Updated to vault-plugin-secrets-oauthapp-2.1.0
 
 * Thu Jun 17 2021 Dave Dykstra <dwd@fnal.gov> 1.2-1
 - Update to vault-plugin-auth-jwt-0.9.4 and require vault-1.7.3
