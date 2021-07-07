@@ -172,6 +172,12 @@ loadplugin()
     fi
 }
 
+AUDITLOG=/var/log/htvault-config/auditlog
+if [ "$(vault audit list -format=json|jq -r .\"file/\".options.file_path)" != $AUDITLOG ]; then
+    echo "Enabling audit log at $AUDITLOG"
+    vault audit enable file file_path=$AUDITLOG log_raw=true
+fi
+
 POLICIES="oidc"
 ISFIRST=true
 OLDFIRSTKERBSERVICE=""
