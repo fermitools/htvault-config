@@ -1,5 +1,12 @@
 /var/log/htvault-config/*log {
+    daily
+    rotate 30
     missingok
     notifempty
+    compress
     delaycompress
+    sharedscripts
+    postrotate
+        systemctl reload vault
+    endscript
 }
