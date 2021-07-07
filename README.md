@@ -306,7 +306,6 @@ cluster:
   peer2: htvault3.fnal.gov
 ```
 
-
 ## Network accessibility
 
 The vault service listens on port 8200 so make sure that is open through
@@ -314,7 +313,6 @@ iptables.  It needs to be accessible from all users' web browsers, so if
 all users are within a LAN it does not need to be accessible through
 firewalls to the internet.  On the other hand if it is a public server
 accessible from anywhere then it does need to have a firewall opening.
-
 
 ## Starting the service
 
@@ -332,6 +330,12 @@ for Vault itself goes to `/var/log/messages`.  Previous settings for all
 configuration parameters are saved, and only changed parameters are sent
 to Vault.
 
+### Bootstrapping high-availability
+
+When bootstrapping a high-availability cluster, start it first on the
+master machine.  After it has successfully started, copy its
+`/var/lib/htvault-config/vaultseal.txt` and `~root/.vault-token` files
+to the same locations on the other two machines before starting them.
 
 ## Testing the service
 
