@@ -39,8 +39,8 @@ if $LIBEXEC/parseconfig.py /etc/htvault-config/config.d > config.json.new; then
     if $LIBEXEC/jsontobash.py <config.json >config.bash.new; then
         if [ -f config.bash ]; then
             sed 's/^/_old/' config.bash >config.bash.old
+            rm -f config.bash
         fi
-        mv config.bash.new config.bash
     else
         echo "Failure converting config.json to config.bash" >&2
         exit 1
@@ -53,7 +53,7 @@ fi
 if [ -f config.bash.old ]; then
     . ./config.bash.old
 fi
-. ./config.bash
+. ./config.bash.new
 
 ISMASTER=true
 MYNAME="${_cluster_myname:-`uname -n`}"
@@ -133,9 +133,25 @@ if ! $NOWAIT && [ "`vault status -format=json|jq -r .storage_type`" = "raft" ]; 
     fi
 fi
 
+# successfully started, save the new configuration
+mv config.bash.new config.bash
+
 if ! $ISMASTER; then
     echo "Completed vault configuration at `date`"
     exit 0
+fi
+
+if [ -n "$_old_cluster_master" ] && [ "$_cluster_master" != "$_old_cluster_master" ]; then
+    echo "Removing old master $_old_cluster_master"
+    vault operator raft remove-peer "$_old_cluster_master"
+fi
+if [ -n "$_old_cluster_peer1" ] && [ "$_cluster_peer1" != "$_old_cluster_peer1" ]; then
+    echo "Removing old peer1 $_old_cluster_peer1"
+    vault operator raft remove-peer "$_old_cluster_peer1"
+fi
+if [ -n "$_old_cluster_peer2" ] && [ "$_cluster_peer2" != "$_old_cluster_peer2" ]; then
+    echo "Removing old peer2 $_old_cluster_peer2"
+    vault operator raft remove-peer "$_old_cluster_peer2"
 fi
 
 ENBLEDMODS=""
