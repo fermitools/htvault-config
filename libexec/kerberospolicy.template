@@ -1,6 +1,6 @@
-path "<vpath>/creds/{{identity.entity.aliases.<kerberos>.name}}@<domain>:*" {
+path "<vpath>/creds/{{identity.entity.aliases.<kerberos>.name}}@<domain>:<role>" {
     capabilities = [ "list", "read" ]
 }
-path "<vpath>/creds/{{identity.entity.aliases.<kerberos>.name}}:*" {
+path "<vpath>/creds/{{identity.entity.aliases.<kerberos>.name}}:<role>" {
     capabilities = [ "list", "read" ]
 }

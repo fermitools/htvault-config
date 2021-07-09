@@ -197,7 +197,8 @@ first defined service by default, and Vault will read its keytab from
 `/etc/krb5.keytab`.  Subsequent services expect to find a keytab in
 `/etc/krb5-<name>.keytab` where `<name>` is the kerberos service name
 defined here.  To access the alternate kerberos service from htgettoken
-use its option `--kerbpath=auth/kerberos-<name>/login`.
+use its option `--kerbpath=auth/kerberos-<name>/login`.  Each keytab
+should have a "host" key in it matching the machine name.
 
 As examples here is a configuration for Fermilab supporting both fnal
 and ligo kerberos services, and another supporting a CERN kerberos
@@ -274,7 +275,9 @@ round-robin, and set the full value as `name`, although it can be
 tested by setting `name` to one of the individual machine names.
 In the testing case in order to test one of the peers give its name as
 the Vault server address to htgettoken `-a` and give the cluster name as
-the `--vaultalias` option.
+the `--vaultalias` option.  If kerberos is used, the kerberos keytab
+on the master machine should contain a host key matching the cluster
+name.
 
 The `myname` keyword is only needed if \`uname -n\` does not match
 the fully qualified domain name of the current machine when accessing
@@ -292,7 +295,7 @@ cluster:
   peer2: htvault3.fnal.gov
 ```
 
-The full configuration should only be set on the `master` machine.  The
+The full configuration need only be set on the `master` machine.  The
 other machines only need these cluster settings, no other configuration.
 They should each list the same cluster `name` and `master` but set the
 other two machines as their peers, for example on htvault2:
@@ -306,7 +309,6 @@ cluster:
   peer2: htvault3.fnal.gov
 ```
 
-
 ## Network accessibility
 
 The vault service listens on port 8200 so make sure that is open through
@@ -314,7 +316,6 @@ iptables.  It needs to be accessible from all users' web browsers, so if
 all users are within a LAN it does not need to be accessible through
 firewalls to the internet.  On the other hand if it is a public server
 accessible from anywhere then it does need to have a firewall opening.
-
 
 ## Starting the service
 
@@ -332,6 +333,24 @@ for Vault itself goes to `/var/log/messages`.  Previous settings for all
 configuration parameters are saved, and only changed parameters are sent
 to Vault.
 
+### Bootstrapping high-availability
+
+When bootstrapping a high-availability cluster, start it first on the
+master machine.  After it has successfully started, copy its
+`/var/lib/htvault-config/vaultseal.txt` and `~root/.vault-token` files
+to the same locations on the other two machines before starting them.
+
+Watch the `startlog` on each machine to see that all three machines
+have joined the cluster and which one is the leader and which are
+followers.  At any time you can see the status by running as root
+```
+export VAULT_ADDR=http://localhost:8202
+vault operator raft list-peers
+```
+After initial bootstrapping, there needs to be at least two of the three
+machines running in order for a leader to be chosen and service provided.
+Writes get automatically redirected to the leader, although reads can be
+done on any active server without contacting the leader.
 
 ## Testing the service
 
@@ -346,3 +365,46 @@ htgettoken -a <your.host.name>
 where `<your.host.name>` is replaced by the fully qualified domain
 name of your Vault server.  Add `-i <issuer>` to select a specific
 issuer and `-i <role>` to select a specific role.
+
+## Recovery
+
+If a vault database somehow gets corrupted and unable to be unsealed
+according to the `startlog`, a way to get it in operation again is to
+remove everything from `/var/lib/htvault-config` (including `.cache`)
+and start vault again.  All the stored secrets will be lost.
+
+### Changing high availability cluster machine names
+
+If you want to change the cluster name, stop vault on all the servers,
+change the name on all of them, and start them up again.  Any callback
+URLs registered with OIDC issuers will need to be updated to the new
+name, and if you use kerberos a new kerberos keytab matching the new
+name should be installed.
+
+If you want to change the master or either peer name, that can be done
+one machine at a time while service continues.
+
+To move the master to a different machine in the cluster, first stop
+vault on the old master.  Copy all the configuration in
+`/etc/htvault-config/config.d` from the old master to the new one, and
+also copy `/var/lib/htvault-config/config.bash` so the new master will
+be able to tell what the current configuration is.  Then change the
+cluster configuration to list the new master and restart vault there
+while leaving the third machine running.  That will remove the old
+master from the cluster.  Whenever a machine is removed from the
+cluster, it needs to be reloaded from scratch so remove everything in
+`/var/lib/htvault-config` on the old master except for `vaultseal.txt`.
+Then starting the old master will allow it to rejoin the cluster and
+re-download the data.  Remember to change the master in the
+configuration on the third machine as well although vault does not need
+to be restarted.
+
+Changing one of the peers is similar but a little simpler.  First stop
+vault on the old peer, then change the peer configuration on the master
+to have the new peer and restart vault on the master while leaving the
+other peer running.  That will remove the old peer from the cluster.
+The new one needs to start out with an empty `/var/lib/htvault-config`
+except for `vaultseal.txt`, and remember to also copy
+`~root/.vault-token` and the cluster configuration.  After the new peer
+has joined the cluster, vault on the third machine also needs to be
+restarted with the updated cluster configuration.

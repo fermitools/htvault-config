@@ -31,12 +31,17 @@ def convertbash(pfx,data):
         for key in data:
             convertbash(pfx + '_' + checkbashvar(key), data[key])
     elif type(data) is list:
-        if len(data) > 0 and type(data[0]) is dict and 'name' in data[0]:
-            convertbash(pfx, ' '.join([item['name'] for item in data]))
+        if len(data) > 0 and type(data[0]) is dict:
+            names = []
             for item in data:
+                if 'name' not in item:
+                    print("'name' missing in a list under", pfx, file=sys.stderr)
+                    sys.exit(1)
                 name = item['name']
+                names.append(name)
                 del item['name']
                 convertbash(pfx + '_' + checkbashvar(name), item)
+            convertbash(pfx, ' '.join(names))
         else:
             convertbash(pfx, ' '.join([collapsestr(item) for item in data]))
     elif data is not None:

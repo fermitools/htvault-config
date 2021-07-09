@@ -1,8 +1,8 @@
-%define tarball_version 1.5
+%define tarball_version 1.6
 %define plugin1_name vault-plugin-auth-jwt
 %define plugin1_version 0.9.4
 %define plugin2_name vault-plugin-secrets-oauthapp
-%define plugin2_version 2.0.0
+%define plugin2_version 2.1.0
 
 # This is to avoid
 #   *** ERROR: No build ID note found
@@ -13,7 +13,7 @@
 
 Summary: Configuration for Hashicorp Vault for use with htgettoken client
 Name: htvault-config
-Version: 1.2
+Version: 1.3
 Release: 1%{?dist}
 Group: Applications/System
 License: BSD
@@ -89,10 +89,23 @@ systemctl daemon-reload
 /lib/systemd/system/vault.service.d/%{name}.conf
 %{_libexecdir}/%{name}
 %attr(750, vault, vault) %{_sharedstatedir}/%{name}
-%attr(750, root,root) %dir %{_localstatedir}/log/%{name}
+%attr(750, vault,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
-# Added license in COPYING file
+* Wed Jul 9 2021 Dave Dykstra <dwd@fnal.gov> 1.3-1
+- Added license in COPYING file
+- Updated to vault-plugin-secrets-oauthapp-2.1.0
+- Added audit log at /var/log/htvault-config/auditlog
+- Enabled delayed log compression and daily logs instead of weekly
+- Add support for moving the master in a high-availability cluster from
+  one machine to another and for changing the name of either peer
+- If 'name' is missing from a yaml list, give a helpful error message 
+  instead of causing a python crash
+- Limit vault token policies for oidc and kerberos to a single role
+  and issuer.  To use these limited policies for kerberos requires
+  htgettoken >= 1.3 so for now the coarse-grained kerberos is still
+  supported as well but it will be removed later.
+- Remove the default policy from vault tokens.
 
 * Thu Jun 17 2021 Dave Dykstra <dwd@fnal.gov> 1.2-1
 - Update to vault-plugin-auth-jwt-0.9.4 and require vault-1.7.3

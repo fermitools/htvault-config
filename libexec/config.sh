@@ -39,8 +39,8 @@ if $LIBEXEC/parseconfig.py /etc/htvault-config/config.d > config.json.new; then
     if $LIBEXEC/jsontobash.py <config.json >config.bash.new; then
         if [ -f config.bash ]; then
             sed 's/^/_old/' config.bash >config.bash.old
+            rm -f config.bash
         fi
-        mv config.bash.new config.bash
     else
         echo "Failure converting config.json to config.bash" >&2
         exit 1
@@ -53,7 +53,7 @@ fi
 if [ -f config.bash.old ]; then
     . ./config.bash.old
 fi
-. ./config.bash
+. ./config.bash.new
 
 ISMASTER=true
 MYNAME="${_cluster_myname:-`uname -n`}"
@@ -133,9 +133,25 @@ if ! $NOWAIT && [ "`vault status -format=json|jq -r .storage_type`" = "raft" ]; 
     fi
 fi
 
+# successfully started, save the new configuration
+mv config.bash.new config.bash
+
 if ! $ISMASTER; then
     echo "Completed vault configuration at `date`"
     exit 0
+fi
+
+if [ -n "$_old_cluster_master" ] && [ "$_cluster_master" != "$_old_cluster_master" ]; then
+    echo "Removing old master $_old_cluster_master"
+    vault operator raft remove-peer "$_old_cluster_master"
+fi
+if [ -n "$_old_cluster_peer1" ] && [ "$_cluster_peer1" != "$_old_cluster_peer1" ]; then
+    echo "Removing old peer1 $_old_cluster_peer1"
+    vault operator raft remove-peer "$_old_cluster_peer1"
+fi
+if [ -n "$_old_cluster_peer2" ] && [ "$_cluster_peer2" != "$_old_cluster_peer2" ]; then
+    echo "Removing old peer2 $_old_cluster_peer2"
+    vault operator raft remove-peer "$_old_cluster_peer2"
 fi
 
 ENBLEDMODS=""
@@ -172,65 +188,87 @@ loadplugin()
     fi
 }
 
-POLICIES="oidc"
+AUDITLOG=/var/log/htvault-config/auditlog
+if [ "$(vault audit list -format=json|jq -r .\"file/\".options.file_path)" != $AUDITLOG ]; then
+    echo "Enabling audit log at $AUDITLOG"
+    vault audit enable file file_path=$AUDITLOG log_raw=true
+fi
+
+mkdir -p policies
+POLICIES=""
+DELETEDPOLICIES=""
+# COMPATPOLICIES are temporary for backward compatibility
+COMPATPOLICIES=""
 ISFIRST=true
-OLDFIRSTKERBSERVICE=""
+OLDFIRSTKERBNAME=""
+POLICYTYPES="oidc"
 if [ "$_old_kerberos" != "$_kerberos" ]; then
     # The kerberos list changed
-    # This is complicated because the first kerberos service is
-    #   just called "kerberos" instead of "kerberos-$KERBSERVICE"
-    #   and the first service can change
+    # This is complicated because for htgettoken <= 1.2 the first kerberos
+    #   service is just called "kerberos" instead of "kerberos-$KERBNAME"
+    #   and the service that is first can change.  For htgettoken >= 1.3
+    #   the first kerberos listed still needs to be known but only because
+    #   it is the one that uses the default kerberos keytab and applies to
+    #   any issuer names that don't match $KERBNAME.
     KERBNAMEDSERVICES=""
-    for KERBSERVICE in $_kerberos; do
+    for KERBNAME in $_kerberos; do
         if $ISFIRST; then
             ISFIRST=false
         else
-            KERBNAMEDSERVICES="$KERBNAMEDSERVICES $KERBSERVICE"
+            KERBNAMEDSERVICES="$KERBNAMEDSERVICES $KERBNAME"
         fi
     done
     ISFIRST=true
-    for KERBSERVICE in $_old_kerberos; do
+    for KERBNAME in $_old_kerberos; do
         if $ISFIRST; then
             ISFIRST=false
-            OLDFIRSTKERBSERVICE="$KERBSERVICE"
+            OLDFIRSTKERBNAME="$KERBNAME"
             if [ -z "$_kerberos" ]; then
                 # No kerberos any more
                 echo "Disabling kerberos"
                 vault auth disable kerberos
                 updateenabledmods
             fi
-        elif ! [[ " $KERBNAMEDSERVICES " == *" $KERBSERVICE "* ]]; then
-            KERBSUFFIX="-$KERBSERVICE"
+        elif ! [[ " $KERBNAMEDSERVICES " == *" $KERBNAME "* ]]; then
+            KERBSUFFIX="-$KERBNAME"
             echo "Disabling kerberos$KERBSUFFIX"
             vault auth disable kerberos$KERBSUFFIX
             updateenabledmods
         fi
-        if ! [[ " $_kerberos " == *" $KERBSERVICE "* ]]; then
-            echo "Deleting kerberos${KERBSERVICE}policy"
-            vault policy delete kerberos${KERBSERVICE}policy
-            rm -f kerberos${KERBSERVICE}policy.hcl
+        if ! [[ " $_kerberos " == *" $KERBNAME "* ]]; then
+            DELETEDPOLICIES="$DELETEDPOLICIES kerberos${KERBNAME}"
         fi
     done
 else
-    for KERBSERVICE in $_old_kerberos; do
-        OLDFIRSTKERBSERVICE="$KERBSERVICE"
+    for KERBNAME in $_old_kerberos; do
+        OLDFIRSTKERBNAME="$KERBNAME"
         break
     done
 fi
+FIRSTKERBNAME=""
+OTHERKERBNAMES=""
 ISFIRST=true
-for KERBSERVICE in $_kerberos; do
+for KERBNAME in $_kerberos; do
     if $ISFIRST; then
         ISFIRST=false
         KERBSUFFIX=""
     else
-        KERBSUFFIX="-$KERBSERVICE"
+        KERBSUFFIX="-$KERBNAME"
     fi
     KEYTAB=/etc/krb5$KERBSUFFIX.keytab
     if [ ! -f $KEYTAB ]; then
         echo "$KEYTAB not found, skipping kerberos$KERBSUFFIX"
         continue
     fi
-    POLICIES="$POLICIES kerberos$KERBSERVICE"
+    if [ -z "$FIRSTKERBNAME$OTHERKERBNAMES" ]; then
+        POLICYTYPES="$POLICYTYPES kerberos"
+    fi
+    if [ -z "$KERBSUFFIX" ]; then
+        FIRSTKERBNAME="$KERBNAME"
+    else
+        OTHERKERBNAMES="$OTHERKERBNAMES $KERBNAME"
+    fi
+    COMPATPOLICIES="$COMPATPOLICIES kerberos$KERBNAME"
     CHANGED=false
     if ! modenabled kerberos$KERBSUFFIX; then
         CHANGED=true
@@ -238,7 +276,7 @@ for KERBSERVICE in $_kerberos; do
         vault auth enable -path=kerberos$KERBSUFFIX \
             -passthrough-request-headers=Authorization \
             -allowed-response-headers=www-authenticate kerberos
-    elif [ -z "$KERBSUFFIX" ] && [ "$OLDFIRSTKERBSERVICE" != "$KERBSERVICE" ]; then 
+    elif [ -z "$KERBSUFFIX" ] && [ "$OLDFIRSTKERBNAME" != "$KERBNAME" ]; then 
         # first kerberos service name changed
         CHANGED=true
     elif [ ! -f config.json.old ] || [ $KEYTAB -nt config.json.old ]; then
@@ -246,36 +284,35 @@ for KERBSERVICE in $_kerberos; do
         CHANGED=true
     fi
     for VAR in ldapattr ldapdn ldapurl; do
-        eval $VAR=\"\$_kerberos_${KERBSERVICE//-/_}_$VAR\"
-        eval old_$VAR=\"\$_old_kerberos_${KERBSERVICE//-/_}_$VAR\"
+        eval $VAR=\"\$_kerberos_${KERBNAME//-/_}_$VAR\"
+        eval old_$VAR=\"\$_old_kerberos_${KERBNAME//-/_}_$VAR\"
         if eval [ \"\$$VAR\" != \"\$old_$VAR\" ]; then
             CHANGED=true
         fi
     done
 
-    if ! $CHANGED; then
-        continue
+    POLICYNAME=kerberos${KERBNAME}
+    if $CHANGED || [ ! -f policies/$POLICYNAME.hcl ]; then
+        echo "Configuring kerberos$KERBSUFFIX"
+        base64 $KEYTAB >krb5.keytab.base64
+        vault write auth/kerberos$KERBSUFFIX/config \
+            keytab=@$VARLIB/krb5.keytab.base64 \
+            service_account="host/$SERVICENAME"
+        rm -f krb5.keytab.base64
+
+        vault write auth/kerberos$KERBSUFFIX/config/ldap \
+            url="$ldapurl" \
+            userdn="$ldapdn" \
+            userattr="$ldapattr" \
+            token_policies="$POLICYNAME,tokencreate"
     fi
-
-    echo "Configuring kerberos$KERBSUFFIX"
-    base64 $KEYTAB >krb5.keytab.base64
-    vault write auth/kerberos$KERBSUFFIX/config \
-	keytab=@$VARLIB/krb5.keytab.base64 \
-	service_account="host/$SERVICENAME"
-    rm -f krb5.keytab.base64
-
-    vault write auth/kerberos$KERBSUFFIX/config/ldap \
-	url="$ldapurl" \
-	userdn="$ldapdn" \
-	userattr="$ldapattr" \
-	token_policies="kerberos${KERBSERVICE}policy,tokencreatepolicy"
 done
 
 loadplugin secrets-oauthapp secret/oauthapp
 loadplugin auth-jwt auth/oidc
 
-for POLICY in $POLICIES; do
-    echo "/* Do not edit this file, generated from ${POLICY}policy.template */" >${POLICY}policy.hcl.new
+for POLICY in $COMPATPOLICIES; do
+    echo "/* Generated from ${POLICY}policy.template */" >policies/${POLICY}.hcl.new
 done
 
 for TYPEMOD in auth/oidc secrets/oauthapp; do
@@ -298,6 +335,8 @@ if [ "$_old_issuers" != "$_issuers" ]; then
         fi
     done
 fi
+CURRENTKERBNAME=""
+KERBCONFIGCHANGED=false
 for ISSUER in $_issuers; do 
     VPATH=oidc-$ISSUER
     REDIRECT_URIS="https://$SERVICENAME:8200/v1/auth/$VPATH/oidc/callback"
@@ -348,6 +387,10 @@ EOF
                 if ! [[ " $roles " == *" $ROLE "* ]]; then
                     echo "Deleting $VPATH role $ROLE"
                     vault delete $VPATH/role/$ROLE
+                    DELETEDPOLICIES="$DELETEDPOLICIES oidc${ISSUER}_${ROLE}"
+                    if [ -n "$_old_kerberos" ]; then
+                        DELETEDPOLICIES="$DELETEDPOLICIES kerberos${ISSUER}_${ROLE}"
+                    fi
                 fi
             done
         fi
@@ -359,30 +402,97 @@ EOF
         done
     fi
 
+    if [ -n "$FIRSTKERBNAME$OTHERKERBNAMES" ]; then
+        if [[ " $OTHERKERBNAMES " == *" $ISSUER "* ]]; then
+            KERBNAME="$ISSUER"
+            KEYTAB=/etc/krb5-$ISSUER.keytab
+        else
+            KERBNAME="$FIRSTKERBNAME"
+            KEYTAB=/etc/krb5.keytab
+        fi
+        if [ "$KERBNAME" != "$CURRENTKERBNAME" ]; then
+            CURRENTKERBNAME="$KERBNAME"
+            KERBCONFIGCHANGED=false
+            if [ ! -f config.json.old ] || [ $KEYTAB -nt config.json.old ]; then
+                echo "$KEYTAB changed since last configuration"
+                KERBCONFIGCHANGED=true
+            fi
+            for VAR in ldapattr ldapdn ldapurl; do
+                eval $VAR=\"\$_kerberos_${KERBNAME//-/_}_$VAR\"
+                eval old_$VAR=\"\$_old_kerberos_${KERBNAME//-/_}_$VAR\"
+                if eval [ \"\$$VAR\" != \"\$old_$VAR\" ]; then
+                    KERBCONFIGCHANGED=true
+                fi
+            done
+        fi
+    fi
+
     for ROLE in $roles; do
         eval scopes=\"\$_issuers_${ISSUER//-/_}_roles_${ROLE//-/_}_scopes\"
         eval old_scopes=\"\$_old_issuers_${ISSUER//-/_}_roles_${ROLE//-/_}_scopes\"
-        if $ENABLED && ! $CHANGED && [ "$scopes" = "$old_scopes" ]; then
-            continue
-        fi
-        # use some json input in order to have nested parameters
-        echo "Configuring $VPATH role $ROLE with scopes $scopes"
-        vault write $VPATH/role/$ROLE - \
-            role_type="oidc" \
-            user_claim="$credclaim" \
-            groups_claim="" \
-            oidc_scopes="$scopes" \
-            policies=default,oidcpolicy,tokencreatepolicy \
-            callback_mode="${callbackmode:-device}" \
-            poll_interval=3 \
-            allowed_redirect_uris="$REDIRECT_URIS" \
-            verbose_oidc_logging=true \
-            <<EOF
-            {
-                "claim_mappings": { "$credclaim" : "credkey" },
-                "oauth2_metadata": ["refresh_token"]
-            }
+        POLICYNAME=oidc${ISSUER}_${ROLE}
+        if ! $ENABLED || $CHANGED || [ "$scopes" != "$old_scopes" ] || [ ! -f policies/${POLICYNAME}.hcl ]; then
+            # use some json input in order to have nested parameters
+            echo "Configuring $VPATH role $ROLE with scopes $scopes"
+            vault write $VPATH/role/$ROLE - \
+                role_type="oidc" \
+                user_claim="$credclaim" \
+                groups_claim="" \
+                oidc_scopes="$scopes" \
+                token_no_default_policy=true \
+                policies=${POLICYNAME},tokencreate \
+                callback_mode="${callbackmode:-device}" \
+                poll_interval=3 \
+                allowed_redirect_uris="$REDIRECT_URIS" \
+                verbose_oidc_logging=true \
+                <<EOF
+                {
+                    "claim_mappings": { "$credclaim" : "credkey" },
+                    "oauth2_metadata": ["refresh_token"]
+                }
 EOF
+        fi
+
+        if [ -n "$FIRSTKERBNAME$OTHERKERBNAMES" ]; then
+            KERBCHANGED=$KERBCONFIGCHANGED
+            KERBSERVICE=kerberos-${ISSUER}_${ROLE}
+            if ! modenabled $KERBSERVICE; then
+                KERBCHANGED=true
+                echo "Enabling $KERBERVICE"
+                vault auth enable -path=$KERBSERVICE \
+                    -passthrough-request-headers=Authorization \
+                    -allowed-response-headers=www-authenticate kerberos
+            fi
+
+            POLICYNAME=kerberos${ISSUER}_${ROLE}
+            if $KERBCHANGED || [ ! -f policies/$POLICYNAME.hcl ]; then
+                echo "Configuring $KERBSERVICE"
+                base64 $KEYTAB >krb5.keytab.base64
+                vault write auth/$KERBSERVICE/config \
+                    keytab=@$VARLIB/krb5.keytab.base64 \
+                    service_account="host/$SERVICENAME"
+                rm -f krb5.keytab.base64
+
+                vault write auth/$KERBSERVICE/config/ldap \
+                    url="$ldapurl" \
+                    userdn="$ldapdn" \
+                    userattr="$ldapattr" \
+                    token_no_default_policy=true \
+                    token_policies="$POLICYNAME,tokencreate"
+            fi
+        fi
+
+        for POLICYTYPE in $POLICYTYPES; do
+            if [ "$POLICYTYPE" = kerberos ]; then
+                POLICYISSUER="${POLICYTYPE}-${ISSUER}_${ROLE}"
+            else
+                POLICYISSUER="${POLICYTYPE}-${ISSUER}"
+            fi
+            POLICYNAME="${POLICYTYPE}${ISSUER}_${ROLE}"
+            POLICIES="$POLICIES ${POLICYNAME}"
+            ACCESSOR="`vault read sys/auth -format=json|jq -r '.data."'$POLICYISSUER'/".accessor'`"
+            sed -e "s,<vpath>,secret/oauth-$ISSUER," -e "s/<${POLICYTYPE}>/$ACCESSOR/" -e "s/@<domain>/$policydomain/" -e "s/<role>/$ROLE/" $LIBEXEC/${POLICYTYPE}policy.template >>policies/${POLICYNAME}.hcl.new
+        done
     done
 
     CHANGED=false
@@ -426,44 +536,46 @@ EOF
     fi
 
     ISFIRST=true
-    for POLICY in $POLICIES; do
-	POLICYISSUER="$POLICY"
-	TEMPLATEPOLICY=$POLICY
-	if [ "$POLICY" = oidc ]; then
-	    POLICYISSUER="$POLICY-$ISSUER"
-	elif [[ "$POLICY" =~ ^kerberos ]]; then
-            KERBSERVICE=${POLICY/kerberos/}
-            if $ISFIRST; then
-                ISFIRST=false
-                KERBSUFFIX=""
-            else
-                KERBSUFFIX="-$KERBSERVICE"
-            fi
-            eval policydomain=\"\$_kerberos_${KERBSERVICE//-/_}_policydomain\"
-	    TEMPLATEPOLICY=kerberos
-	    POLICYISSUER=kerberos$KERBSUFFIX
-	fi
+    for POLICY in $COMPATPOLICIES; do
+        KERBNAME=${POLICY/kerberos/}
+        if $ISFIRST; then
+            ISFIRST=false
+            KERBSUFFIX=""
+        else
+            KERBSUFFIX="-$KERBNAME"
+        fi
+        eval policydomain=\"\$_kerberos_${KERBNAME//-/_}_policydomain\"
+        TEMPLATEPOLICY=kerberos
+        POLICYISSUER=kerberos$KERBSUFFIX
 	ACCESSOR="`vault read sys/auth -format=json|jq -r '.data."'$POLICYISSUER'/".accessor'`"
-	sed -e "s,<vpath>,$VPATH," -e "s/<${TEMPLATEPOLICY}>/$ACCESSOR/" -e "s/@<domain>/$policydomain/" $LIBEXEC/${TEMPLATEPOLICY}policy.template >>${POLICY}policy.hcl.new
+	sed -e "s,<vpath>,$VPATH," -e "s/<${TEMPLATEPOLICY}>/$ACCESSOR/" -e "s/@<domain>/$policydomain/" $LIBEXEC/${TEMPLATEPOLICY}compatpolicy.template >>policies/${POLICY}.hcl.new
     done
 done
 
+POLICIES="$POLICIES $COMPATPOLICIES"
+
 # global policies
 for POLICY in tokencreate; do
-    cat $LIBEXEC/${POLICY}policy.template >${POLICY}policy.hcl.new
+    cat $LIBEXEC/${POLICY}policy.template >policies/${POLICY}.hcl.new
+done
+POLICIES="$POLICIES tokencreate"
+
+for POLICY in $DELETEDPOLICIES; do
+    rm -f policies/${POLICY}.hcl*
+    vault policy delete ${POLICY}
 done
 
-for POLICY in $POLICIES tokencreate; do
-    if [ ! -f ${POLICY}policy.hcl ] || \
-            ! cmp -s ${POLICY}policy.hcl.new ${POLICY}policy.hcl; then
-        if [ -f ${POLICY}policy.hcl ]; then
-            mv ${POLICY}policy.hcl ${POLICY}policy.hcl.old
+for POLICY in $POLICIES; do
+    if [ ! -f policies/${POLICY}.hcl ] || \
+            ! cmp -s policies/${POLICY}.hcl.new policies/${POLICY}.hcl; then
+        if [ -f policies/${POLICY}.hcl ]; then
+            mv policies/${POLICY}.hcl policies/${POLICY}.hcl.old
         fi
-        mv ${POLICY}policy.hcl.new ${POLICY}policy.hcl
-	chmod a-w ${POLICY}policy.hcl
-	vault policy write ${POLICY}policy ${POLICY}policy.hcl
+        mv policies/${POLICY}.hcl.new policies/${POLICY}.hcl
+	chmod a-w policies/${POLICY}.hcl
+	vault policy write ${POLICY} policies/${POLICY}.hcl
     else
-        rm -f ${POLICY}policy.hcl.new
+        rm -f policies/${POLICY}.hcl.new
     fi
 done
 
