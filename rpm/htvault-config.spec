@@ -1,8 +1,8 @@
-%define tarball_version 1.6
+%define tarball_version 1.7
 %define plugin1_name vault-plugin-auth-jwt
 %define plugin1_version 0.9.4
 %define plugin2_name vault-plugin-secrets-oauthapp
-%define plugin2_version 2.1.0
+%define plugin2_version 2.2.0
 
 # This is to avoid
 #   *** ERROR: No build ID note found
@@ -13,7 +13,7 @@
 
 Summary: Configuration for Hashicorp Vault for use with htgettoken client
 Name: htvault-config
-Version: 1.3
+Version: 1.4
 Release: 1%{?dist}
 Group: Applications/System
 License: BSD
@@ -92,9 +92,17 @@ systemctl daemon-reload
 %attr(750, vault,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
-* Wed Jul 9 2021 Dave Dykstra <dwd@fnal.gov> 1.3-1
+* Tue Jul 20 2021 Dave Dykstra <dwd@fnal.gov> 1.4-1
+- Updated the token exchange PR for vault-plugin-secrets-oauthapp to
+    send the client secret in the initial authorization request in the
+    device flow
+- Updated to vault-plugin-secrets-oauthapp-2.2.0
+
+* Mon Jul 12 2021 Dave Dykstra <dwd@fnal.gov> 1.3-1
 - Added license in COPYING file
 - Updated to vault-plugin-secrets-oauthapp-2.1.0
+- Updated the token exchange PR for vault-plugin-secrets-oauthapp to
+    accept comma-separated lists of audiences
 - Added audit log at /var/log/htvault-config/auditlog
 - Enabled delayed log compression and daily logs instead of weekly
 - Add support for moving the master in a high-availability cluster from
