@@ -39,6 +39,12 @@ earlier ones.  If the same parameters are set again in a later file
 it overrides the earlier one.  It is recommended to start the file
 names with two digit numbers to easily control the order.
 
+If the hostname (\`uname -n\`) of the server does not match the fully
+qualified domain name that will be used to access the vault service,
+put the full name in the `cluster:` `myname:` configuration variable.
+See details about the variable in the
+[High Availability](#high-availability) section below
+(even if not setting up a High Availability cluster).
 
 ### OIDC/Oauth configuration
 
