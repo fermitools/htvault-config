@@ -308,20 +308,34 @@ for KERBNAME in $_kerberos; do
     fi
 done
 
-loadplugin secrets-oauthapp secret/oauthapp
+loadplugin secrets-oauthapp secret/oauth
 loadplugin auth-jwt auth/oidc
+updateenabledmods
+if ! modenabled oauth; then
+    OAUTHENABLED=false
+    vault secrets enable secret/oauth
+else
+    OAUTHENABLED=true
+fi
+# disable modules that can be enabled during the first initialization
+if modenabled oauthapp; then
+    vault secrets disable oauthapp
+fi
+if modenabled oidc; then
+    vault auth disable oidc
+fi
+
+disable_refresh_checks()
+{
+    if [ "`vault read $1/config -format=json 2>/dev/null|jq .data.tune_refresh_check_interval_seconds`" != 0 ]; then
+        echo "Disabling refresh checks on $1"
+        vault write $1/config tune_refresh_check_interval_seconds=0 
+    fi
+}
+disable_refresh_checks secret/oauth
 
 for POLICY in $COMPATPOLICIES; do
     echo "/* Generated from ${POLICY}policy.template */" >policies/${POLICY}.hcl.new
-done
-
-for TYPEMOD in auth/oidc secrets/oauthapp; do
-    TYPE=${TYPEMOD%%/*}
-    MOD=${TYPEMOD##*/}
-    if modenabled $MOD; then
-        # this can happen during the first initialization, we don't use them
-        vault $TYPE disable $MOD
-    fi
 done
 
 if [ "$_old_issuers" != "$_issuers" ]; then
@@ -332,6 +346,7 @@ if [ "$_old_issuers" != "$_issuers" ]; then
             vault auth disable oidc-$ISSUER
             vault secrets disable secret/oauth-$ISSUER
             updateenabledmods
+            vault delete oauth/servers/$ISSUER
         fi
     done
 fi
@@ -491,7 +506,7 @@ EOF
             POLICYNAME="${POLICYTYPE}${ISSUER}_${ROLE}"
             POLICIES="$POLICIES ${POLICYNAME}"
             ACCESSOR="`vault read sys/auth -format=json|jq -r '.data."'$POLICYISSUER'/".accessor'`"
-            sed -e "s,<vpath>,secret/oauth-$ISSUER," -e "s/<${POLICYTYPE}>/$ACCESSOR/" -e "s/@<domain>/$policydomain/" -e "s/<role>/$ROLE/" $LIBEXEC/${POLICYTYPE}policy.template >>policies/${POLICYNAME}.hcl.new
+            sed -e "s,<issuer>,$ISSUER," -e "s/<${POLICYTYPE}>/$ACCESSOR/" -e "s/@<domain>/$policydomain/" -e "s/<role>/$ROLE/" $LIBEXEC/${POLICYTYPE}policy.template >>policies/${POLICYNAME}.hcl.new
         done
     done
 
@@ -505,6 +520,7 @@ EOF
                 echo "Disabling secret/oauth-$ISSUER"
                 vault secrets disable secret/oauth-$ISSUER
                 updateenabledmods
+                vault delete secret/oauth/servers/$ISSUER
                 break
             fi
         done
@@ -517,13 +533,28 @@ EOF
     fi
 
     VPATH=secret/oauth-$ISSUER
+    disable_refresh_checks $VPATH
     if ! $ENABLED || $CHANGED; then
         echo "Configuring $VPATH"
         if ! modenabled oauth-$ISSUER; then
             vault secrets enable -path=$VPATH oauthapp
         fi
 
-        vault write $VPATH/config - \
+        vault write $VPATH/servers/legacy - \
+            provider="oidc" \
+            provider_options="issuer_url=$url" \
+            <<EOF
+            {
+                "client_id": "$clientid",
+                "client_secret": "$secret"
+            }
+EOF
+    fi
+
+    if ! $ENABLED || ! $OAUTHENABLED || $CHANGED; then
+        SPATH=secret/oauth/servers/$ISSUER
+        echo "Configuring $SPATH"
+        vault write $SPATH - \
             provider="oidc" \
             provider_options="issuer_url=$url" \
             tune_refresh_check_interval_seconds=0 \
@@ -548,7 +579,7 @@ EOF
         TEMPLATEPOLICY=kerberos
         POLICYISSUER=kerberos$KERBSUFFIX
 	ACCESSOR="`vault read sys/auth -format=json|jq -r '.data."'$POLICYISSUER'/".accessor'`"
-	sed -e "s,<vpath>,$VPATH," -e "s/<${TEMPLATEPOLICY}>/$ACCESSOR/" -e "s/@<domain>/$policydomain/" $LIBEXEC/${TEMPLATEPOLICY}compatpolicy.template >>policies/${POLICY}.hcl.new
+	sed -e "s,<issuer>,$ISSUER," -e "s/<${TEMPLATEPOLICY}>/$ACCESSOR/" -e "s/@<domain>/$policydomain/" $LIBEXEC/${TEMPLATEPOLICY}compatpolicy.template >>policies/${POLICY}.hcl.new
     done
 done
 

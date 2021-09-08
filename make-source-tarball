@@ -8,8 +8,24 @@ for V in plugin1_name plugin1_version plugin2_name plugin2_version; do
     eval "`sed -n "s/^%define $V /$V=/p" rpm/htvault-config.spec`"
 done
 
+plugin1_prefix=v
+plugin2_prefix=v
+if [[ "$plugin1_version" == commit/* ]]; then
+    plugin1_prefix=""
+    plugin1_version=${plugin1_version#commit/}
+fi
+if [[ "$plugin2_version" == commit/* ]]; then
+    plugin1_prefix=""
+    plugin1_version=${plugin2_version#commit/}
+fi
+
 BASE=htvault-config-src
+GO116="`ls -d $HOME/go1.16.* 2>/dev/null|tail -1`"
 set -ex
+if [ -n "$GO116" ]; then
+    PATH="$GO116/bin:$PATH"
+fi
+
 cd "`dirname $0`"
 for OLDBASE in $BASE-*; do
     if [ -d $OLDBASE/gopath ]; then
@@ -23,7 +39,7 @@ mkdir $BASE
 cd $BASE
 mkdir gopath
 export GOPATH=$PWD/gopath
-curl -s https://codeload.github.com/hashicorp/${plugin1_name}/tar.gz/v${plugin1_version} | tar xzf -
+curl -s https://codeload.github.com/hashicorp/${plugin1_name}/tar.gz/${plugin1_prefix}${plugin1_version} | tar xzf -
 cd ${plugin1_name}-${plugin1_version}
 curl -sL https://github.com/hashicorp/$plugin1_name/pull/119.diff | patch -p1
 curl -sL https://github.com/hashicorp/$plugin1_name/pull/131.diff | patch -p1
@@ -31,9 +47,10 @@ $newgit "make bootstrap"
 go mod vendor
 cd ..
 
-curl -s https://codeload.github.com/puppetlabs/${plugin2_name}/tar.gz/v${plugin2_version} | tar xzf -
+curl -s https://codeload.github.com/puppetlabs/${plugin2_name}/tar.gz/${plugin2_prefix}${plugin2_version} | tar xzf -
 cd ${plugin2_name}-${plugin2_version}
-curl -sL https://github.com/puppetlabs/$plugin2_name/pull/41.diff | patch -p1
+curl -sL https://github.com/puppetlabs/$plugin2_name/pull/64.diff | patch -p1
+curl -sL https://github.com/puppetlabs/$plugin2_name/pull/41.diff | sed '/minimum_seconds/s/2/3/g;s/persistence.AuthServerName(entry.AuthServerName)/entry.AuthServerName/'| patch -p1
 $newgit "make generate"
 go mod vendor
 cd ..
