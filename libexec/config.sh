@@ -131,6 +131,9 @@ if ! $NOWAIT && [ "`vault status -format=json|jq -r .storage_type`" = "raft" ]; 
 	echo "Giving up"
 	exit 1
     fi
+    if $ISMASTER; then
+        echo "Continuing after HA setup at `date`"
+    fi
 fi
 
 # successfully started, save the new configuration
@@ -345,10 +348,10 @@ if [ "$_old_issuers" != "$_issuers" ]; then
             echo "Disabling oidc-$ISSUER and secret/oauth-$ISSUER"
             vault auth disable oidc-$ISSUER
             vault secrets disable secret/oauth-$ISSUER
-            updateenabledmods
-            vault delete oauth/servers/$ISSUER
+            vault delete secret/oauth/servers/$ISSUER
         fi
     done
+    updateenabledmods
 fi
 CURRENTKERBNAME=""
 KERBCONFIGCHANGED=false
@@ -405,6 +408,12 @@ EOF
                     DELETEDPOLICIES="$DELETEDPOLICIES oidc${ISSUER}_${ROLE}"
                     if [ -n "$_old_kerberos" ]; then
                         DELETEDPOLICIES="$DELETEDPOLICIES kerberos${ISSUER}_${ROLE}"
+                        KERBSERVICE=kerberos-${ISSUER}_${ROLE}
+                        if modenabled $KERBSERVICE; then
+                            echo "Disabling $KERBSERVICE"
+                            vault auth disable $KERBSERVICE
+                            updatedenabledmods
+                        fi
                     fi
                 fi
             done
@@ -533,7 +542,6 @@ EOF
     fi
 
     VPATH=secret/oauth-$ISSUER
-    disable_refresh_checks $VPATH
     if ! $ENABLED || $CHANGED; then
         echo "Configuring $VPATH"
         if ! modenabled oauth-$ISSUER; then
@@ -550,6 +558,7 @@ EOF
             }
 EOF
     fi
+    disable_refresh_checks $VPATH
 
     if ! $ENABLED || ! $OAUTHENABLED || $CHANGED; then
         SPATH=secret/oauth/servers/$ISSUER
