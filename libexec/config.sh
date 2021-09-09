@@ -358,10 +358,11 @@ fi
 CURRENTKERBNAME=""
 KERBCONFIGCHANGED=false
 for ISSUER in $_issuers; do 
+    echo "Checking issuer $ISSUER"
     VPATH=oidc-$ISSUER
     REDIRECT_URIS="https://$SERVICENAME:8200/v1/auth/$VPATH/oidc/callback"
 
-    for VAR in clientid secret url roles callbackmode credclaim; do
+    for VAR in clientid secret url roles callbackmode credclaim kerbservice; do
         eval $VAR=\"\$_issuers_${ISSUER//-/_}_$VAR\"
         eval old_$VAR=\"\$_old_issuers_${ISSUER//-/_}_$VAR\"
     done
@@ -428,15 +429,27 @@ EOF
         done
     fi
 
+    KEYTAB=""
     if [ -n "$FIRSTKERBNAME$OTHERKERBNAMES" ]; then
-        if [[ " $OTHERKERBNAMES " == *" $ISSUER "* ]]; then
+        if [ "$kerbservice" != "" ]; then
+            KERBNAME="$kerbservice"
+            if [ "$KERBNAME" = "$FIRSTKERBNAME" ]; then
+                KEYTAB=/etc/krb5.keytab
+            else
+                KEYTAB=/etc/krb5-$KERBNAME.keytab
+            fi
+            if [ ! -f "$KEYTAB" ]; then
+                echo "$KEYTAB not found, skipping $kerbservice kerberos for $ISSUER issuer"
+                KEYTAB=""
+            fi
+        elif [[ " $OTHERKERBNAMES " == *" $ISSUER "* ]]; then
             KERBNAME="$ISSUER"
             KEYTAB=/etc/krb5-$ISSUER.keytab
         else
             KERBNAME="$FIRSTKERBNAME"
             KEYTAB=/etc/krb5.keytab
         fi
-        if [ "$KERBNAME" != "$CURRENTKERBNAME" ]; then
+        if [ -n "$KEYTAB" ] && [ "$KERBNAME" != "$CURRENTKERBNAME" ]; then
             CURRENTKERBNAME="$KERBNAME"
             KERBCONFIGCHANGED=false
             if [ ! -f config.json.old ] || [ $KEYTAB -nt config.json.old ]; then
@@ -481,8 +494,11 @@ EOF
 EOF
         fi
 
-        if [ -n "$FIRSTKERBNAME$OTHERKERBNAMES" ]; then
+        if [ -n "$KEYTAB" ]; then
             KERBCHANGED=$KERBCONFIGCHANGED
+            if [ "$kerbservice" != "$old_kerbservice" ]; then
+                KERBCHANGED=true
+            fi
             KERBSERVICE=kerberos-${ISSUER}_${ROLE}
             if ! modenabled $KERBSERVICE; then
                 KERBCHANGED=true

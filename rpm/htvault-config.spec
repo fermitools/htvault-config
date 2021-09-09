@@ -110,6 +110,8 @@ systemctl daemon-reload
 - Include vault-plugin-secrets-oauthapp PR #64 which enables a default
   "legacy" server so older versions of htgettoken can still work.
 - Reconfigure kerberos if the service name changes.
+- Add a "kerbservice" issuers keyword to select non-default kerberos service
+  for a particular issuer
 
 * Tue Jul 20 2021 Dave Dykstra <dwd@fnal.gov> 1.4-1
 - Updated the token exchange PR for vault-plugin-secrets-oauthapp to

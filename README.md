@@ -60,6 +60,7 @@ Each list item under that should have the following keywords:
 | url  | Issuer URL |
 | callbackmode | `direct` or `device` (optional, default `device`) |
 | credclaim | OIDC id token claim to use for credential key |
+| kerbservice | Kerberos service name (optional) |
 | roles | List of roles |
 
 If you want a default issuer for htgettoken give that one the
@@ -77,7 +78,10 @@ information for both the OIDC issuer and for the Kerberos Domain
 Controller (KDC) must ultimately be from the same database.  See the
 discussion on `policydomain` below in the kerberos section to see
 whether or not the domain name should be included in the `credclaim`
-value.
+value.  If there is more than one Kerberos service defined the
+`kerbservice` keyword can be used to select a non-default service by
+name; the default is to select one that matches the name of the issuer
+or otherwise the first one defined.
 
 Each role under roles should have the following keywords:
 
@@ -198,13 +202,15 @@ taken to not use a credclaim that is always without `@domain` because
 then it might be possible for the same user id used by different
 people at different IdPs to map to the same Vault secrets path.
 
-More than one kerberos service may be defined.  htgettoken will use the
-first defined service by default, and Vault will read its keytab from
-`/etc/krb5.keytab`.  Subsequent services expect to find a keytab in
+More than one kerberos service may be defined.  Issuers will be
+associated with the first defined service by default.  If an issuer
+name matches one of the additional kerberos service names, that will
+be used instead, or an issuer can explicitly select a kerberos service
+with the `kerbservice` keyword.  Vault will the first service's keytab
+from `/etc/krb5.keytab`.  Subsequent services expect to find a keytab in
 `/etc/krb5-<name>.keytab` where `<name>` is the kerberos service name
-defined here.  To access the alternate kerberos service from htgettoken
-use its option `--kerbpath=auth/kerberos-<name>/login`.  Each keytab
-should have a "host" key in it matching the machine name.
+defined here.  Each keytab should have a "host" key in it matching the
+machine name.  If a token issuer name matc
 
 As examples here is a configuration for Fermilab supporting both fnal
 and ligo kerberos services, and another supporting a CERN kerberos
