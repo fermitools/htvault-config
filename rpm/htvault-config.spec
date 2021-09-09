@@ -101,7 +101,7 @@ systemctl daemon-reload
 %attr(750, vault,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
-* Wed Sep  8 2021 Dave Dykstra <dwd@fnal.gov> 1.5-1
+* Thu Sep  9 2021 Dave Dykstra <dwd@fnal.gov> 1.5-1
 - Require at least vault version 1.8.2
 - Update to vault-plugin-auth-jwt to the master branch at the time of the
     0.10.1 tag of the release-1.8 branch
@@ -109,6 +109,7 @@ systemctl daemon-reload
   feature of combining all providers in a single plugin process
 - Include vault-plugin-secrets-oauthapp PR #64 which enables a default
   "legacy" server so older versions of htgettoken can still work.
+- Reconfigure kerberos if the service name changes.
 
 * Tue Jul 20 2021 Dave Dykstra <dwd@fnal.gov> 1.4-1
 - Updated the token exchange PR for vault-plugin-secrets-oauthapp to

@@ -285,6 +285,8 @@ for KERBNAME in $_kerberos; do
     elif [ ! -f config.json.old ] || [ $KEYTAB -nt config.json.old ]; then
         echo "$KEYTAB changed since last configuration"
         CHANGED=true
+    elif [ "$SERVICENAME" != "$old_SERVICENAME" ]; then
+        CHANGED=true
     fi
     for VAR in ldapattr ldapdn ldapurl; do
         eval $VAR=\"\$_kerberos_${KERBNAME//-/_}_$VAR\"
@@ -439,6 +441,8 @@ EOF
             KERBCONFIGCHANGED=false
             if [ ! -f config.json.old ] || [ $KEYTAB -nt config.json.old ]; then
                 echo "$KEYTAB changed since last configuration"
+                KERBCONFIGCHANGED=true
+            elif [ "$SERVICENAME" != "$old_SERVICENAME" ]; then
                 KERBCONFIGCHANGED=true
             fi
             for VAR in ldapattr ldapdn ldapurl; do
