@@ -101,7 +101,7 @@ systemctl daemon-reload
 %attr(750, vault,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
-* Thu Sep  9 2021 Dave Dykstra <dwd@fnal.gov> 1.5-1
+* Fri Sep 10 2021 Dave Dykstra <dwd@fnal.gov> 1.5-1
 - Require at least vault version 1.8.2
 - Update to vault-plugin-auth-jwt to the master branch at the time of the
     0.10.1 tag of the release-1.8 branch
@@ -112,6 +112,8 @@ systemctl daemon-reload
 - Reconfigure kerberos if the service name changes.
 - Add a "kerbservice" issuers keyword to select non-default kerberos service
   for a particular issuer
+- Immediately fail with a clear message if there's a duplicate name in a
+  configuration list
 
 * Tue Jul 20 2021 Dave Dykstra <dwd@fnal.gov> 1.4-1
 - Updated the token exchange PR for vault-plugin-secrets-oauthapp to
