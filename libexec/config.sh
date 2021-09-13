@@ -296,8 +296,16 @@ for KERBNAME in $_kerberos; do
         fi
     done
 
-    POLICYNAME=kerberos${KERBNAME}
-    if $CHANGED || [ ! -f policies/$POLICYNAME.hcl ]; then
+    TOKPOLICIES="kerberos${KERBNAME},tokenops"
+    if ! $CHANGED; then
+        for POLICY in ${TOKPOLICIES//,/ }; do
+            if [ ! -f policies/$POLICY.hcl ]; then
+                CHANGED=true
+                break
+            fi
+        done
+    fi
+    if $CHANGED; then
         echo "Configuring kerberos$KERBSUFFIX"
         base64 $KEYTAB >krb5.keytab.base64
         vault write auth/kerberos$KERBSUFFIX/config \
@@ -309,7 +317,7 @@ for KERBNAME in $_kerberos; do
             url="$ldapurl" \
             userdn="$ldapdn" \
             userattr="$ldapattr" \
-            token_policies="$POLICYNAME,tokencreate"
+            token_policies="$TOKPOLICIES"
     fi
 done
 
@@ -427,6 +435,9 @@ EOF
                 break
             fi
         done
+        if [ ! -f policies/tokenops.hcl ]; then
+            CHANGED=true
+        fi
     fi
 
     KEYTAB=""
@@ -466,6 +477,9 @@ EOF
                 fi
             done
         fi
+        if [ ! -f policies/tokenops.hcl ]; then
+            KERBCONFIGCHANGED=true
+        fi
     fi
 
     for ROLE in $roles; do
@@ -481,7 +495,7 @@ EOF
                 groups_claim="" \
                 oidc_scopes="$scopes" \
                 token_no_default_policy=true \
-                policies=${POLICYNAME},tokencreate \
+                policies=${POLICYNAME},tokenops \
                 callback_mode="${callbackmode:-device}" \
                 poll_interval=3 \
                 allowed_redirect_uris="$REDIRECT_URIS" \
@@ -522,7 +536,7 @@ EOF
                     userdn="$ldapdn" \
                     userattr="$ldapattr" \
                     token_no_default_policy=true \
-                    token_policies="$POLICYNAME,tokencreate"
+                    token_policies="$POLICYNAME,tokenops"
             fi
         fi
 
@@ -615,10 +629,13 @@ done
 POLICIES="$POLICIES $COMPATPOLICIES"
 
 # global policies
-for POLICY in tokencreate; do
+for POLICY in tokenops; do
     cat $LIBEXEC/${POLICY}policy.template >policies/${POLICY}.hcl.new
 done
-POLICIES="$POLICIES tokencreate"
+POLICIES="$POLICIES tokenops"
+if [ -f policies/tokencreate.hcl ]; then
+    DELETEDPOLICIES="$DELETEDPOLICIES tokencreate"
+fi
 
 for POLICY in $DELETEDPOLICIES; do
     rm -f policies/${POLICY}.hcl*

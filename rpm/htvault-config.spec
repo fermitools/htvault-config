@@ -101,7 +101,7 @@ systemctl daemon-reload
 %attr(750, vault,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
-* Fri Sep 10 2021 Dave Dykstra <dwd@fnal.gov> 1.5-1
+* Mon Sep 13 2021 Dave Dykstra <dwd@fnal.gov> 1.5-1
 - Require at least vault version 1.8.2
 - Update to vault-plugin-auth-jwt to the master branch at the time of the
     0.10.1 tag of the release-1.8 branch
@@ -114,6 +114,8 @@ systemctl daemon-reload
   for a particular issuer
 - Immediately fail with a clear message if there's a duplicate name in a
   configuration list
+- Allow vault tokens to read auth/token/lookup-self so clients can look up
+  the remaining time to live on the tokens
 
 * Tue Jul 20 2021 Dave Dykstra <dwd@fnal.gov> 1.4-1
 - Updated the token exchange PR for vault-plugin-secrets-oauthapp to
