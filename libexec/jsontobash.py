@@ -22,7 +22,7 @@ def collapsestr(item):
 def checkbashvar(name):
     modname = name.replace('-', '_')
     if not re.match(r'^\w+$', modname):
-        print("Unacceptable character in name ", name, file=sys.stderr)
+        print("Error: Unacceptable character in name ", name, file=sys.stderr)
         sys.exit(1)
     return modname
 
@@ -35,9 +35,12 @@ def convertbash(pfx,data):
             names = []
             for item in data:
                 if 'name' not in item:
-                    print("'name' missing in a list under", pfx, file=sys.stderr)
+                    print("Error: 'name' missing in a list under", pfx, file=sys.stderr)
                     sys.exit(1)
                 name = item['name']
+                if name in names:
+                    print("Error: Duplicate name %s in a list under" %name, pfx, file=sys.stderr)
+                    sys.exit(1)
                 names.append(name)
                 del item['name']
                 convertbash(pfx + '_' + checkbashvar(name), item)

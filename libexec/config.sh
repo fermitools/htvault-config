@@ -131,6 +131,9 @@ if ! $NOWAIT && [ "`vault status -format=json|jq -r .storage_type`" = "raft" ]; 
 	echo "Giving up"
 	exit 1
     fi
+    if $ISMASTER; then
+        echo "Continuing after HA setup at `date`"
+    fi
 fi
 
 # successfully started, save the new configuration
@@ -282,6 +285,8 @@ for KERBNAME in $_kerberos; do
     elif [ ! -f config.json.old ] || [ $KEYTAB -nt config.json.old ]; then
         echo "$KEYTAB changed since last configuration"
         CHANGED=true
+    elif [ "$SERVICENAME" != "$old_SERVICENAME" ]; then
+        CHANGED=true
     fi
     for VAR in ldapattr ldapdn ldapurl; do
         eval $VAR=\"\$_kerberos_${KERBNAME//-/_}_$VAR\"
@@ -291,8 +296,16 @@ for KERBNAME in $_kerberos; do
         fi
     done
 
-    POLICYNAME=kerberos${KERBNAME}
-    if $CHANGED || [ ! -f policies/$POLICYNAME.hcl ]; then
+    TOKPOLICIES="kerberos${KERBNAME},tokenops"
+    if ! $CHANGED; then
+        for POLICY in ${TOKPOLICIES//,/ }; do
+            if [ ! -f policies/$POLICY.hcl ]; then
+                CHANGED=true
+                break
+            fi
+        done
+    fi
+    if $CHANGED; then
         echo "Configuring kerberos$KERBSUFFIX"
         base64 $KEYTAB >krb5.keytab.base64
         vault write auth/kerberos$KERBSUFFIX/config \
@@ -304,24 +317,38 @@ for KERBNAME in $_kerberos; do
             url="$ldapurl" \
             userdn="$ldapdn" \
             userattr="$ldapattr" \
-            token_policies="$POLICYNAME,tokencreate"
+            token_policies="$TOKPOLICIES"
     fi
 done
 
-loadplugin secrets-oauthapp secret/oauthapp
+loadplugin secrets-oauthapp secret/oauth
 loadplugin auth-jwt auth/oidc
+updateenabledmods
+if ! modenabled oauth; then
+    OAUTHENABLED=false
+    vault secrets enable secret/oauth
+else
+    OAUTHENABLED=true
+fi
+# disable modules that can be enabled during the first initialization
+if modenabled oauthapp; then
+    vault secrets disable oauthapp
+fi
+if modenabled oidc; then
+    vault auth disable oidc
+fi
+
+disable_refresh_checks()
+{
+    if [ "`vault read $1/config -format=json 2>/dev/null|jq .data.tune_refresh_check_interval_seconds`" != 0 ]; then
+        echo "Disabling refresh checks on $1"
+        vault write $1/config tune_refresh_check_interval_seconds=0 
+    fi
+}
+disable_refresh_checks secret/oauth
 
 for POLICY in $COMPATPOLICIES; do
     echo "/* Generated from ${POLICY}policy.template */" >policies/${POLICY}.hcl.new
-done
-
-for TYPEMOD in auth/oidc secrets/oauthapp; do
-    TYPE=${TYPEMOD%%/*}
-    MOD=${TYPEMOD##*/}
-    if modenabled $MOD; then
-        # this can happen during the first initialization, we don't use them
-        vault $TYPE disable $MOD
-    fi
 done
 
 if [ "$_old_issuers" != "$_issuers" ]; then
@@ -331,17 +358,19 @@ if [ "$_old_issuers" != "$_issuers" ]; then
             echo "Disabling oidc-$ISSUER and secret/oauth-$ISSUER"
             vault auth disable oidc-$ISSUER
             vault secrets disable secret/oauth-$ISSUER
-            updateenabledmods
+            vault delete secret/oauth/servers/$ISSUER
         fi
     done
+    updateenabledmods
 fi
 CURRENTKERBNAME=""
 KERBCONFIGCHANGED=false
 for ISSUER in $_issuers; do 
+    echo "Checking issuer $ISSUER"
     VPATH=oidc-$ISSUER
     REDIRECT_URIS="https://$SERVICENAME:8200/v1/auth/$VPATH/oidc/callback"
 
-    for VAR in clientid secret url roles callbackmode credclaim; do
+    for VAR in clientid secret url roles callbackmode credclaim kerbservice; do
         eval $VAR=\"\$_issuers_${ISSUER//-/_}_$VAR\"
         eval old_$VAR=\"\$_old_issuers_${ISSUER//-/_}_$VAR\"
     done
@@ -390,6 +419,12 @@ EOF
                     DELETEDPOLICIES="$DELETEDPOLICIES oidc${ISSUER}_${ROLE}"
                     if [ -n "$_old_kerberos" ]; then
                         DELETEDPOLICIES="$DELETEDPOLICIES kerberos${ISSUER}_${ROLE}"
+                        KERBSERVICE=kerberos-${ISSUER}_${ROLE}
+                        if modenabled $KERBSERVICE; then
+                            echo "Disabling $KERBSERVICE"
+                            vault auth disable $KERBSERVICE
+                            updatedenabledmods
+                        fi
                     fi
                 fi
             done
@@ -400,21 +435,38 @@ EOF
                 break
             fi
         done
+        if [ ! -f policies/tokenops.hcl ]; then
+            CHANGED=true
+        fi
     fi
 
+    KEYTAB=""
     if [ -n "$FIRSTKERBNAME$OTHERKERBNAMES" ]; then
-        if [[ " $OTHERKERBNAMES " == *" $ISSUER "* ]]; then
+        if [ "$kerbservice" != "" ]; then
+            KERBNAME="$kerbservice"
+            if [ "$KERBNAME" = "$FIRSTKERBNAME" ]; then
+                KEYTAB=/etc/krb5.keytab
+            else
+                KEYTAB=/etc/krb5-$KERBNAME.keytab
+            fi
+            if [ ! -f "$KEYTAB" ]; then
+                echo "$KEYTAB not found, skipping $kerbservice kerberos for $ISSUER issuer"
+                KEYTAB=""
+            fi
+        elif [[ " $OTHERKERBNAMES " == *" $ISSUER "* ]]; then
             KERBNAME="$ISSUER"
             KEYTAB=/etc/krb5-$ISSUER.keytab
         else
             KERBNAME="$FIRSTKERBNAME"
             KEYTAB=/etc/krb5.keytab
         fi
-        if [ "$KERBNAME" != "$CURRENTKERBNAME" ]; then
+        if [ -n "$KEYTAB" ] && [ "$KERBNAME" != "$CURRENTKERBNAME" ]; then
             CURRENTKERBNAME="$KERBNAME"
             KERBCONFIGCHANGED=false
             if [ ! -f config.json.old ] || [ $KEYTAB -nt config.json.old ]; then
                 echo "$KEYTAB changed since last configuration"
+                KERBCONFIGCHANGED=true
+            elif [ "$SERVICENAME" != "$old_SERVICENAME" ]; then
                 KERBCONFIGCHANGED=true
             fi
             for VAR in ldapattr ldapdn ldapurl; do
@@ -424,6 +476,9 @@ EOF
                     KERBCONFIGCHANGED=true
                 fi
             done
+        fi
+        if [ ! -f policies/tokenops.hcl ]; then
+            KERBCONFIGCHANGED=true
         fi
     fi
 
@@ -440,7 +495,7 @@ EOF
                 groups_claim="" \
                 oidc_scopes="$scopes" \
                 token_no_default_policy=true \
-                policies=${POLICYNAME},tokencreate \
+                policies=${POLICYNAME},tokenops \
                 callback_mode="${callbackmode:-device}" \
                 poll_interval=3 \
                 allowed_redirect_uris="$REDIRECT_URIS" \
@@ -453,8 +508,11 @@ EOF
 EOF
         fi
 
-        if [ -n "$FIRSTKERBNAME$OTHERKERBNAMES" ]; then
+        if [ -n "$KEYTAB" ]; then
             KERBCHANGED=$KERBCONFIGCHANGED
+            if [ "$kerbservice" != "$old_kerbservice" ]; then
+                KERBCHANGED=true
+            fi
             KERBSERVICE=kerberos-${ISSUER}_${ROLE}
             if ! modenabled $KERBSERVICE; then
                 KERBCHANGED=true
@@ -478,7 +536,7 @@ EOF
                     userdn="$ldapdn" \
                     userattr="$ldapattr" \
                     token_no_default_policy=true \
-                    token_policies="$POLICYNAME,tokencreate"
+                    token_policies="$POLICYNAME,tokenops"
             fi
         fi
 
@@ -491,7 +549,7 @@ EOF
             POLICYNAME="${POLICYTYPE}${ISSUER}_${ROLE}"
             POLICIES="$POLICIES ${POLICYNAME}"
             ACCESSOR="`vault read sys/auth -format=json|jq -r '.data."'$POLICYISSUER'/".accessor'`"
-            sed -e "s,<vpath>,secret/oauth-$ISSUER," -e "s/<${POLICYTYPE}>/$ACCESSOR/" -e "s/@<domain>/$policydomain/" -e "s/<role>/$ROLE/" $LIBEXEC/${POLICYTYPE}policy.template >>policies/${POLICYNAME}.hcl.new
+            sed -e "s,<issuer>,$ISSUER," -e "s/<${POLICYTYPE}>/$ACCESSOR/" -e "s/@<domain>/$policydomain/" -e "s/<role>/$ROLE/" $LIBEXEC/${POLICYTYPE}policy.template >>policies/${POLICYNAME}.hcl.new
         done
     done
 
@@ -505,6 +563,7 @@ EOF
                 echo "Disabling secret/oauth-$ISSUER"
                 vault secrets disable secret/oauth-$ISSUER
                 updateenabledmods
+                vault delete secret/oauth/servers/$ISSUER
                 break
             fi
         done
@@ -523,7 +582,22 @@ EOF
             vault secrets enable -path=$VPATH oauthapp
         fi
 
-        vault write $VPATH/config - \
+        vault write $VPATH/servers/legacy - \
+            provider="oidc" \
+            provider_options="issuer_url=$url" \
+            <<EOF
+            {
+                "client_id": "$clientid",
+                "client_secret": "$secret"
+            }
+EOF
+    fi
+    disable_refresh_checks $VPATH
+
+    if ! $ENABLED || ! $OAUTHENABLED || $CHANGED; then
+        SPATH=secret/oauth/servers/$ISSUER
+        echo "Configuring $SPATH"
+        vault write $SPATH - \
             provider="oidc" \
             provider_options="issuer_url=$url" \
             tune_refresh_check_interval_seconds=0 \
@@ -548,17 +622,20 @@ EOF
         TEMPLATEPOLICY=kerberos
         POLICYISSUER=kerberos$KERBSUFFIX
 	ACCESSOR="`vault read sys/auth -format=json|jq -r '.data."'$POLICYISSUER'/".accessor'`"
-	sed -e "s,<vpath>,$VPATH," -e "s/<${TEMPLATEPOLICY}>/$ACCESSOR/" -e "s/@<domain>/$policydomain/" $LIBEXEC/${TEMPLATEPOLICY}compatpolicy.template >>policies/${POLICY}.hcl.new
+	sed -e "s,<issuer>,$ISSUER," -e "s/<${TEMPLATEPOLICY}>/$ACCESSOR/" -e "s/@<domain>/$policydomain/" $LIBEXEC/${TEMPLATEPOLICY}compatpolicy.template >>policies/${POLICY}.hcl.new
     done
 done
 
 POLICIES="$POLICIES $COMPATPOLICIES"
 
 # global policies
-for POLICY in tokencreate; do
+for POLICY in tokenops; do
     cat $LIBEXEC/${POLICY}policy.template >policies/${POLICY}.hcl.new
 done
-POLICIES="$POLICIES tokencreate"
+POLICIES="$POLICIES tokenops"
+if [ -f policies/tokencreate.hcl ]; then
+    DELETEDPOLICIES="$DELETEDPOLICIES tokencreate"
+fi
 
 for POLICY in $DELETEDPOLICIES; do
     rm -f policies/${POLICY}.hcl*

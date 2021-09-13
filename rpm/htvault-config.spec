@@ -1,8 +1,9 @@
-%define tarball_version 1.7
+%define tarball_version 1.8
 %define plugin1_name vault-plugin-auth-jwt
-%define plugin1_version 0.9.4
+# this commit is equivalent to version 0.10.1 but on the master branch
+%define plugin1_version commit/7311fc7f94c5e2d3b32ebc2824b61a782e03edf3
 %define plugin2_name vault-plugin-secrets-oauthapp
-%define plugin2_version 2.2.0
+%define plugin2_version 3.0.0-beta.3
 
 # This is to avoid
 #   *** ERROR: No build ID note found
@@ -13,7 +14,7 @@
 
 Summary: Configuration for Hashicorp Vault for use with htgettoken client
 Name: htvault-config
-Version: 1.4
+Version: 1.5
 Release: 1%{?dist}
 Group: Applications/System
 License: BSD
@@ -25,7 +26,7 @@ Source0: %{name}-%{version}.tar.gz
 # create with ./make-source-tarball
 Source1: %{name}-src-%{tarball_version}.tar.gz
 
-Requires: vault >= 1.7.3
+Requires: vault >= 1.8.2
 Requires: jq
 Requires: python3-PyYAML
 
@@ -44,11 +45,15 @@ htgettoken as a client.
 export GOPATH=$PWD/gopath
 export PATH=$GOPATH/bin:$PATH
 export GOPROXY=file://$(go env GOMODCACHE)/cache/download
-cd %{plugin1_name}-%{plugin1_version}
+PLUGIN1_VERSION=%{plugin1_version}
+PLUGIN2_VERSION=%{plugin2_version}
+PLUGIN1_VERSION=${PLUGIN1_VERSION#commit/}
+PLUGIN2_VERSION=${PLUGIN2_VERSION#commit/}
+cd %{plugin1_name}-${PLUGIN1_VERSION}
 # skip the git in the build script
 ln -s /bin/true git
 PATH=:$PATH make dev
-cd ../%{plugin2_name}-%{plugin2_version}
+cd ../%{plugin2_name}-${PLUGIN2_VERSION}
 make
 cd ..
 
@@ -57,8 +62,12 @@ cd ..
 LIBEXECDIR=$RPM_BUILD_ROOT/%{_libexecdir}/%{name}
 PLUGINDIR=$LIBEXECDIR/plugins
 mkdir -p $PLUGINDIR
-cp %{plugin1_name}-%{plugin1_version}/bin/%{plugin1_name} $PLUGINDIR
-cp %{plugin2_name}-%{plugin2_version}/bin/%{plugin2_name} $PLUGINDIR
+PLUGIN1_VERSION=%{plugin1_version}
+PLUGIN2_VERSION=%{plugin2_version}
+PLUGIN1_VERSION=${PLUGIN1_VERSION#commit/}
+PLUGIN2_VERSION=${PLUGIN2_VERSION#commit/}
+cp %{plugin1_name}-${PLUGIN1_VERSION}/bin/%{plugin1_name} $PLUGINDIR
+cp %{plugin2_name}-${PLUGIN2_VERSION}/bin/%{plugin2_name} $PLUGINDIR
 cd ../%{name}-%{version}
 mkdir -p $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/config.d
 mkdir -p $RPM_BUILD_ROOT/%{_sysconfdir}/logrotate.d
@@ -92,6 +101,22 @@ systemctl daemon-reload
 %attr(750, vault,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+* Mon Sep 13 2021 Dave Dykstra <dwd@fnal.gov> 1.5-1
+- Require at least vault version 1.8.2
+- Update to vault-plugin-auth-jwt to the master branch at the time of the
+    0.10.1 tag of the release-1.8 branch
+- Update to vault-plugin-secrets-oauthapp 3.0.0-beta.3 and use its new
+  feature of combining all providers in a single plugin process
+- Include vault-plugin-secrets-oauthapp PR #64 which enables a default
+  "legacy" server so older versions of htgettoken can still work.
+- Reconfigure kerberos if the service name changes.
+- Add a "kerbservice" issuers keyword to select non-default kerberos service
+  for a particular issuer
+- Immediately fail with a clear message if there's a duplicate name in a
+  configuration list
+- Allow vault tokens to read auth/token/lookup-self so clients can look up
+  the remaining time to live on the tokens
+
 * Tue Jul 20 2021 Dave Dykstra <dwd@fnal.gov> 1.4-1
 - Updated the token exchange PR for vault-plugin-secrets-oauthapp to
     send the client secret in the initial authorization request in the
