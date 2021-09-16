@@ -1,9 +1,9 @@
-%define tarball_version 1.8
+%define tarball_version 1.9
 %define plugin1_name vault-plugin-auth-jwt
 # this commit is equivalent to version 0.10.1 but on the master branch
 %define plugin1_version commit/7311fc7f94c5e2d3b32ebc2824b61a782e03edf3
 %define plugin2_name vault-plugin-secrets-oauthapp
-%define plugin2_version 3.0.0-beta.3
+%define plugin2_version 3.0.0-beta.4
 
 # This is to avoid
 #   *** ERROR: No build ID note found
@@ -14,7 +14,7 @@
 
 Summary: Configuration for Hashicorp Vault for use with htgettoken client
 Name: htvault-config
-Version: 1.5
+Version: 1.6
 Release: 1%{?dist}
 Group: Applications/System
 License: BSD
@@ -101,6 +101,10 @@ systemctl daemon-reload
 %attr(750, vault,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+* Wed Sep 15 2021 Dave Dykstra <dwd@fnal.gov> 1.6-1
+- Update to vault-plugin-secrets-oauthapp 3.0.0-beta.4 which includes a
+  replacement for PR #64.
+
 * Mon Sep 13 2021 Dave Dykstra <dwd@fnal.gov> 1.5-1
 - Require at least vault version 1.8.2
 - Update to vault-plugin-auth-jwt to the master branch at the time of the

@@ -49,8 +49,7 @@ cd ..
 
 curl -s https://codeload.github.com/puppetlabs/${plugin2_name}/tar.gz/${plugin2_prefix}${plugin2_version} | tar xzf -
 cd ${plugin2_name}-${plugin2_version}
-curl -sL https://github.com/puppetlabs/$plugin2_name/pull/64.diff | patch -p1
-curl -sL https://github.com/puppetlabs/$plugin2_name/pull/41.diff | sed '/minimum_seconds/s/2/3/g;s/persistence.AuthServerName(entry.AuthServerName)/entry.AuthServerName/'| patch -p1
+curl -sL https://github.com/puppetlabs/$plugin2_name/pull/41.diff | patch -p1
 $newgit "make generate"
 go mod vendor
 cd ..
