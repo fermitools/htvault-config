@@ -198,6 +198,7 @@ if [ "$(vault audit list -format=json|jq -r .\"file/\".options.file_path)" != $A
 fi
 
 mkdir -p policies
+rm -f policies/*.new # may be left over from previous aborted run
 POLICIES=""
 DELETEDPOLICIES=""
 # COMPATPOLICIES are temporary for backward compatibility
@@ -338,14 +339,25 @@ if modenabled oidc; then
     vault auth disable oidc
 fi
 
-disable_refresh_checks()
+check_secrets_config()
 {
-    if [ "`vault read $1/config -format=json 2>/dev/null|jq .data.tune_refresh_check_interval_seconds`" != 0 ]; then
+    # Although slower than just always writing it out, this avoids excess
+    #   messages if nothing is changing
+    CONFIGJSON="`vault read $1/config -format=json 2>/dev/null`"
+    DOCONFIG=false
+    if [ "`echo "$CONFIGJSON"|jq -r .data.tune_refresh_check_interval_seconds`" != 0 ]; then
         echo "Disabling refresh checks on $1"
-        vault write $1/config tune_refresh_check_interval_seconds=0 
+        DOCONFIG=true
+    fi
+    if [ "`echo "$CONFIGJSON"|jq -r .data.default_server`" != "legacy" ]; then
+        echo "Setting default server on $1"
+        DOCONFIG=true
+    fi
+    if $DOCONFIG; then
+        vault write $1/config tune_refresh_check_interval_seconds=0 default_server=legacy
     fi
 }
-disable_refresh_checks secret/oauth
+check_secrets_config secret/oauth
 
 for POLICY in $COMPATPOLICIES; do
     echo "/* Generated from ${POLICY}policy.template */" >policies/${POLICY}.hcl.new
@@ -577,10 +589,11 @@ EOF
 
     VPATH=secret/oauth-$ISSUER
     if ! $ENABLED || $CHANGED; then
-        echo "Configuring $VPATH"
         if ! modenabled oauth-$ISSUER; then
+            echo "Enabling $VPATH"
             vault secrets enable -path=$VPATH oauthapp
         fi
+        echo "Configuring $VPATH"
 
         vault write $VPATH/servers/legacy - \
             provider="oidc" \
@@ -592,7 +605,7 @@ EOF
             }
 EOF
     fi
-    disable_refresh_checks $VPATH
+    check_secrets_config $VPATH
 
     if ! $ENABLED || ! $OAUTHENABLED || $CHANGED; then
         SPATH=secret/oauth/servers/$ISSUER
@@ -600,7 +613,6 @@ EOF
         vault write $SPATH - \
             provider="oidc" \
             provider_options="issuer_url=$url" \
-            tune_refresh_check_interval_seconds=0 \
             <<EOF
             {
                 "client_id": "$clientid",
