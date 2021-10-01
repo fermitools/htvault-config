@@ -210,7 +210,7 @@ with the `kerbservice` keyword.  Vault will the first service's keytab
 from `/etc/krb5.keytab`.  Subsequent services expect to find a keytab in
 `/etc/krb5-<name>.keytab` where `<name>` is the kerberos service name
 defined here.  Each keytab should have a "host" key in it matching the
-machine name.  If a token issuer name matc
+machine name.
 
 As examples here is a configuration for Fermilab supporting both fnal
 and ligo kerberos services, and another supporting a CERN kerberos
