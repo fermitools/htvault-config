@@ -287,9 +287,12 @@ round-robin, and set the full value as `name`, although it can be
 tested by setting `name` to one of the individual machine names.
 In the testing case in order to test one of the peers give its name as
 the Vault server address to htgettoken `-a` and give the cluster name as
-the `--vaultalias` option.  If kerberos is used, the kerberos keytab
+the `--vaultalias` option.  If kerberos is used then the kerberos keytab
 on the master machine should contain a host key matching the cluster
-name.
+name, and if the machines are behind a load balancer or DNS round-robin
+then they all should have a `hostcert.pem` and `hostkey.pem` in
+`/etc/htvault-config` that has a Subject Alternate Name that matches
+the cluster name.
 
 The `myname` keyword is only needed if \`uname -n\` does not match
 the fully qualified domain name of the current machine when accessing
