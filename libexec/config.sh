@@ -201,56 +201,10 @@ mkdir -p policies
 rm -f policies/*.new # may be left over from previous aborted run
 POLICIES=""
 DELETEDPOLICIES=""
-# COMPATPOLICIES are temporary for backward compatibility
-COMPATPOLICIES=""
 ISFIRST=true
-OLDFIRSTKERBNAME=""
 POLICYTYPES="oidc"
-if [ "$_old_kerberos" != "$_kerberos" ]; then
-    # The kerberos list changed
-    # This is complicated because for htgettoken <= 1.2 the first kerberos
-    #   service is just called "kerberos" instead of "kerberos-$KERBNAME"
-    #   and the service that is first can change.  For htgettoken >= 1.3
-    #   the first kerberos listed still needs to be known but only because
-    #   it is the one that uses the default kerberos keytab and applies to
-    #   any issuer names that don't match $KERBNAME.
-    KERBNAMEDSERVICES=""
-    for KERBNAME in $_kerberos; do
-        if $ISFIRST; then
-            ISFIRST=false
-        else
-            KERBNAMEDSERVICES="$KERBNAMEDSERVICES $KERBNAME"
-        fi
-    done
-    ISFIRST=true
-    for KERBNAME in $_old_kerberos; do
-        if $ISFIRST; then
-            ISFIRST=false
-            OLDFIRSTKERBNAME="$KERBNAME"
-            if [ -z "$_kerberos" ]; then
-                # No kerberos any more
-                echo "Disabling kerberos"
-                vault auth disable kerberos
-                updateenabledmods
-            fi
-        elif ! [[ " $KERBNAMEDSERVICES " == *" $KERBNAME "* ]]; then
-            KERBSUFFIX="-$KERBNAME"
-            echo "Disabling kerberos$KERBSUFFIX"
-            vault auth disable kerberos$KERBSUFFIX
-            updateenabledmods
-        fi
-        if ! [[ " $_kerberos " == *" $KERBNAME "* ]]; then
-            DELETEDPOLICIES="$DELETEDPOLICIES kerberos${KERBNAME}"
-        fi
-    done
-else
-    for KERBNAME in $_old_kerberos; do
-        OLDFIRSTKERBNAME="$KERBNAME"
-        break
-    done
-fi
-FIRSTKERBNAME=""
-OTHERKERBNAMES=""
+
+# Clean out old kerberos modules
 ISFIRST=true
 for KERBNAME in $_kerberos; do
     if $ISFIRST; then
@@ -259,66 +213,10 @@ for KERBNAME in $_kerberos; do
     else
         KERBSUFFIX="-$KERBNAME"
     fi
-    KEYTAB=/etc/krb5$KERBSUFFIX.keytab
-    if [ ! -f $KEYTAB ]; then
-        echo "$KEYTAB not found, skipping kerberos$KERBSUFFIX"
-        continue
-    fi
-    if [ -z "$FIRSTKERBNAME$OTHERKERBNAMES" ]; then
-        POLICYTYPES="$POLICYTYPES kerberos"
-    fi
-    if [ -z "$KERBSUFFIX" ]; then
-        FIRSTKERBNAME="$KERBNAME"
-    else
-        OTHERKERBNAMES="$OTHERKERBNAMES $KERBNAME"
-    fi
-    COMPATPOLICIES="$COMPATPOLICIES kerberos$KERBNAME"
-    CHANGED=false
-    if ! modenabled kerberos$KERBSUFFIX; then
-        CHANGED=true
-        echo "Enabling kerberos$KERBSUFFIX"
-        vault auth enable -path=kerberos$KERBSUFFIX \
-            -passthrough-request-headers=Authorization \
-            -allowed-response-headers=www-authenticate kerberos
-    elif [ -z "$KERBSUFFIX" ] && [ "$OLDFIRSTKERBNAME" != "$KERBNAME" ]; then 
-        # first kerberos service name changed
-        CHANGED=true
-    elif [ ! -f config.json.old ] || [ $KEYTAB -nt config.json.old ]; then
-        echo "$KEYTAB changed since last configuration"
-        CHANGED=true
-    elif [ "$SERVICENAME" != "$old_SERVICENAME" ]; then
-        CHANGED=true
-    fi
-    for VAR in ldapattr ldapdn ldapurl; do
-        eval $VAR=\"\$_kerberos_${KERBNAME//-/_}_$VAR\"
-        eval old_$VAR=\"\$_old_kerberos_${KERBNAME//-/_}_$VAR\"
-        if eval [ \"\$$VAR\" != \"\$old_$VAR\" ]; then
-            CHANGED=true
-        fi
-    done
-
-    TOKPOLICIES="kerberos${KERBNAME},tokenops"
-    if ! $CHANGED; then
-        for POLICY in ${TOKPOLICIES//,/ }; do
-            if [ ! -f policies/$POLICY.hcl ]; then
-                CHANGED=true
-                break
-            fi
-        done
-    fi
-    if $CHANGED; then
-        echo "Configuring kerberos$KERBSUFFIX"
-        base64 $KEYTAB >krb5.keytab.base64
-        vault write auth/kerberos$KERBSUFFIX/config \
-            keytab=@$VARLIB/krb5.keytab.base64 \
-            service_account="host/$SERVICENAME"
-        rm -f krb5.keytab.base64
-
-        vault write auth/kerberos$KERBSUFFIX/config/ldap \
-            url="$ldapurl" \
-            userdn="$ldapdn" \
-            userattr="$ldapattr" \
-            token_policies="$TOKPOLICIES"
+    if modenabled kerberos$KERBSUFFIX; then
+        echo "Disabling kerberos$KERBSUFFIX"
+        vault auth disable kerberos$KERBSUFFIX
+        DELETEDPOLICIES="$DELETEDPOLICIES keberos${KERBNAME}"
     fi
 done
 
@@ -358,10 +256,6 @@ check_secrets_config()
     fi
 }
 check_secrets_config secret/oauth
-
-for POLICY in $COMPATPOLICIES; do
-    echo "/* Generated from ${POLICY}policy.template */" >policies/${POLICY}.hcl.new
-done
 
 if [ "$_old_issuers" != "$_issuers" ]; then
     # The issuers list changed
@@ -619,25 +513,7 @@ EOF
             }
 EOF
     fi
-
-    ISFIRST=true
-    for POLICY in $COMPATPOLICIES; do
-        KERBNAME=${POLICY/kerberos/}
-        if $ISFIRST; then
-            ISFIRST=false
-            KERBSUFFIX=""
-        else
-            KERBSUFFIX="-$KERBNAME"
-        fi
-        eval policydomain=\"\$_kerberos_${KERBNAME//-/_}_policydomain\"
-        TEMPLATEPOLICY=kerberos
-        POLICYISSUER=kerberos$KERBSUFFIX
-	ACCESSOR="`vault read sys/auth -format=json|jq -r '.data."'$POLICYISSUER'/".accessor'`"
-	sed -e "s,<issuer>,$ISSUER," -e "s/<${TEMPLATEPOLICY}>/$ACCESSOR/" -e "s/@<domain>/$policydomain/" $LIBEXEC/${TEMPLATEPOLICY}compatpolicy.template >>policies/${POLICY}.hcl.new
-    done
 done
-
-POLICIES="$POLICIES $COMPATPOLICIES"
 
 # global policies
 for POLICY in tokenops; do
