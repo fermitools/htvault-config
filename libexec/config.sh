@@ -456,10 +456,9 @@ EOF
     if [ -n "$FIRSTKERBNAME$OTHERKERBNAMES" ]; then
         if [ "$kerbservice" != "" ]; then
             KERBNAME="$kerbservice"
-            if [ "$KERBNAME" = "$FIRSTKERBNAME" ]; then
+            KEYTAB=/etc/krb5-$KERBNAME.keytab
+            if [ "$KERBNAME" = "$FIRSTKERBNAME" ] && [ ! -f $KEYTAB ]; then
                 KEYTAB=/etc/krb5.keytab
-            else
-                KEYTAB=/etc/krb5-$KERBNAME.keytab
             fi
             if [ ! -f "$KEYTAB" ]; then
                 echo "$KEYTAB not found, skipping $kerbservice kerberos for $ISSUER issuer"
