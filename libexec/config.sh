@@ -203,8 +203,9 @@ POLICIES=""
 DELETEDPOLICIES=""
 ISFIRST=true
 POLICYTYPES="oidc"
+FIRSTKERBNAME=""
+OTHERKERBNAMES=""
 
-# Clean out old kerberos modules
 ISFIRST=true
 for KERBNAME in $_kerberos; do
     if $ISFIRST; then
@@ -213,10 +214,28 @@ for KERBNAME in $_kerberos; do
     else
         KERBSUFFIX="-$KERBNAME"
     fi
+    
     if modenabled kerberos$KERBSUFFIX; then
+        # clean out old-style of kerberos
         echo "Disabling kerberos$KERBSUFFIX"
         vault auth disable kerberos$KERBSUFFIX
-        DELETEDPOLICIES="$DELETEDPOLICIES keberos${KERBNAME}"
+        POLICYNAME="kerberos${KERBNAME}"
+        DELETEDPOLICIES="$DELETEDPOLICIES $POLICYNAME"
+    fi
+
+    # construct list of kerberos services
+    KEYTAB=/etc/krb5$KERBSUFFIX.keytab
+    if [ ! -f $KEYTAB ]; then
+        echo "$KEYTAB not found, skipping kerberos$KERBSUFFIX"
+        continue
+    fi
+    if [ -z "$FIRSTKERBNAME$OTHERKERBNAMES" ]; then
+        POLICYTYPES="$POLICYTYPES kerberos"
+    fi
+    if [ -z "$KERBSUFFIX" ]; then
+        FIRSTKERBNAME="$KERBNAME"
+    else
+        OTHERKERBNAMES="$OTHERKERBNAMES $KERBNAME"
     fi
 done
 
@@ -257,14 +276,39 @@ check_secrets_config()
 }
 check_secrets_config secret/oauth
 
+disable_role()
+{
+    # assumes $ISSUER and $ROLE are set
+    if [ -n "$_old_kerberos" ]; then
+        KERBSERVICE=kerberos-${ISSUER}_${ROLE}
+        POLICYNAME="$KERBSERVICE"
+        DELETEDPOLICIES="$DELETEDPOLICIES $POLICYNAME"
+        if modenabled $KERBSERVICE; then
+            echo "Disabling $KERBSERVICE"
+            vault auth disable $KERBSERVICE
+            updateenabledmods
+        fi
+    fi
+    POLICYNAME=oidc-${ISSUER}_${ROLE}
+    DELETEDPOLICIES="$DELETEDPOLICIES $POLICYNAME"
+}
+
 if [ "$_old_issuers" != "$_issuers" ]; then
     # The issuers list changed
     for ISSUER in $_old_issuers; do
         if ! [[ " $_issuers " == *" $ISSUER "* ]]; then
-            echo "Disabling oidc-$ISSUER and secret/oauth-$ISSUER"
+            echo "Disabling oidc-$ISSUER, secret/oauth-$ISSUER, and secret/oauth/servers/$ISSUER"
             vault auth disable oidc-$ISSUER
             vault secrets disable secret/oauth-$ISSUER
             vault delete secret/oauth/servers/$ISSUER
+
+            for VAR in roles; do
+                eval old_$VAR=\"\$_old_issuers_${ISSUER//-/_}_$VAR\"
+            done
+
+            for ROLE in $old_roles; do
+                disable_role
+            done
         fi
     done
     updateenabledmods
@@ -322,16 +366,8 @@ EOF
                 if ! [[ " $roles " == *" $ROLE "* ]]; then
                     echo "Deleting $VPATH role $ROLE"
                     vault delete $VPATH/role/$ROLE
-                    DELETEDPOLICIES="$DELETEDPOLICIES oidc${ISSUER}_${ROLE}"
-                    if [ -n "$_old_kerberos" ]; then
-                        DELETEDPOLICIES="$DELETEDPOLICIES kerberos${ISSUER}_${ROLE}"
-                        KERBSERVICE=kerberos-${ISSUER}_${ROLE}
-                        if modenabled $KERBSERVICE; then
-                            echo "Disabling $KERBSERVICE"
-                            vault auth disable $KERBSERVICE
-                            updatedenabledmods
-                        fi
-                    fi
+
+                    disable_role
                 fi
             done
         fi
@@ -390,7 +426,7 @@ EOF
     for ROLE in $roles; do
         eval scopes=\"\$_issuers_${ISSUER//-/_}_roles_${ROLE//-/_}_scopes\"
         eval old_scopes=\"\$_old_issuers_${ISSUER//-/_}_roles_${ROLE//-/_}_scopes\"
-        POLICYNAME=oidc${ISSUER}_${ROLE}
+        POLICYNAME=oidc-${ISSUER}_${ROLE}
         if ! $ENABLED || $CHANGED || [ "$scopes" != "$old_scopes" ] || [ ! -f policies/${POLICYNAME}.hcl ]; then
             # use some json input in order to have nested parameters
             echo "Configuring $VPATH role $ROLE with scopes $scopes"
@@ -427,7 +463,7 @@ EOF
                     -allowed-response-headers=www-authenticate kerberos
             fi
 
-            POLICYNAME=kerberos${ISSUER}_${ROLE}
+            POLICYNAME=$KERBSERVICE
             if $KERBCHANGED || [ ! -f policies/$POLICYNAME.hcl ]; then
                 echo "Configuring $KERBSERVICE"
                 base64 $KEYTAB >krb5.keytab.base64
@@ -446,15 +482,16 @@ EOF
         fi
 
         for POLICYTYPE in $POLICYTYPES; do
-            if [ "$POLICYTYPE" = kerberos ]; then
-                POLICYISSUER="${POLICYTYPE}-${ISSUER}_${ROLE}"
-            else
-                POLICYISSUER="${POLICYTYPE}-${ISSUER}"
+            POLICYISSUER="${POLICYTYPE}-${ISSUER}_${ROLE}"
+            OLDPOLICYNAME="${POLICYTYPE}${ISSUER}_${ROLE}"
+            if vault policy read $OLDPOLICYNAME >/dev/null 2>&1; then
+                # only happens once after an upgrade
+                DELETEDPOLICIES="$DELETEDPOLICIES $OLDPOLICYNAME"
             fi
-            POLICYNAME="${POLICYTYPE}${ISSUER}_${ROLE}"
-            POLICIES="$POLICIES ${POLICYNAME}"
+            POLICYNAME="${POLICYISSUER}"
+            POLICIES="$POLICIES $POLICYNAME"
             ACCESSOR="`vault read sys/auth -format=json|jq -r '.data."'$POLICYISSUER'/".accessor'`"
-            sed -e "s,<issuer>,$ISSUER," -e "s/<${POLICYTYPE}>/$ACCESSOR/" -e "s/@<domain>/$policydomain/" -e "s/<role>/$ROLE/" $LIBEXEC/${POLICYTYPE}policy.template >>policies/${POLICYNAME}.hcl.new
+            sed -e "s,<issuer>,$ISSUER," -e "s/<${POLICYTYPE}>/$ACCESSOR/g" -e "s/@<domain>/$policydomain/" -e "s/<role>/$ROLE/" $LIBEXEC/${POLICYTYPE}policy.template >>policies/${POLICYNAME}.hcl.new
         done
     done
 
