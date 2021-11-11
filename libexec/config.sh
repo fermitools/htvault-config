@@ -482,13 +482,18 @@ EOF
         fi
 
         for POLICYTYPE in $POLICYTYPES; do
-            POLICYISSUER="${POLICYTYPE}-${ISSUER}_${ROLE}"
+            if [ "$POLICYTYPE" = kerberos ]; then
+                POLICYISSUER="${POLICYTYPE}-${ISSUER}_${ROLE}"
+                POLICYNAME="$POLICYISSUER"
+            else
+                POLICYISSUER="${POLICYTYPE}-${ISSUER}"
+                POLICYNAME="${POLICYISSUER}_${ROLE}"
+            fi
             OLDPOLICYNAME="${POLICYTYPE}${ISSUER}_${ROLE}"
             if vault policy read $OLDPOLICYNAME >/dev/null 2>&1; then
                 # only happens once after an upgrade
                 DELETEDPOLICIES="$DELETEDPOLICIES $OLDPOLICYNAME"
             fi
-            POLICYNAME="${POLICYISSUER}"
             POLICIES="$POLICIES $POLICYNAME"
             ACCESSOR="`vault read sys/auth -format=json|jq -r '.data."'$POLICYISSUER'/".accessor'`"
             sed -e "s,<issuer>,$ISSUER," -e "s/<${POLICYTYPE}>/$ACCESSOR/g" -e "s/@<domain>/$policydomain/" -e "s/<role>/$ROLE/" $LIBEXEC/${POLICYTYPE}policy.template >>policies/${POLICYNAME}.hcl.new
