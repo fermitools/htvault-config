@@ -13,7 +13,7 @@
 
 Summary: Configuration for Hashicorp Vault for use with htgettoken client
 Name: htvault-config
-Version: 1.8
+Version: 1.9
 Release: 1%{?dist}
 Group: Applications/System
 License: BSD
@@ -100,6 +100,10 @@ systemctl daemon-reload
 %attr(750, vault,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+* Wed Nov 10 2021 Dave Dykstra <dwd@fnal.gov> 1.9-1
+- Restore separate names for names of issuer and policy when generating
+  policies
+
 * Wed Nov 10 2021 Dave Dykstra <dwd@fnal.gov> 1.8-1
 - Restore part of the setup of kerberos; too much was taken out in 1.7
 - When an issuer is deleted, clean out the policies and kerberos modules
