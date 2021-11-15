@@ -13,7 +13,7 @@
 
 Summary: Configuration for Hashicorp Vault for use with htgettoken client
 Name: htvault-config
-Version: 1.9
+Version: 1.10
 Release: 1%{?dist}
 Group: Applications/System
 License: BSD
@@ -100,6 +100,11 @@ systemctl daemon-reload
 %attr(750, vault,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+* Mon Nov 15 2021 Dave Dykstra <dwd@fnal.gov> 1.10-1
+- Fix problem that /etc/krb5-<name>.keytab was preferred for first service
+  only when the kerbservice was explicitly defined for an issuer.  Now it
+  also works for default first kerberos service.
+
 * Wed Nov 10 2021 Dave Dykstra <dwd@fnal.gov> 1.9-1
 - Restore separate names for names of issuer and policy when generating
   policies

@@ -386,21 +386,20 @@ EOF
     if [ -n "$FIRSTKERBNAME$OTHERKERBNAMES" ]; then
         if [ "$kerbservice" != "" ]; then
             KERBNAME="$kerbservice"
-            KEYTAB=/etc/krb5-$KERBNAME.keytab
-            if [ "$KERBNAME" = "$FIRSTKERBNAME" ] && [ ! -f $KEYTAB ]; then
-                KEYTAB=/etc/krb5.keytab
-            fi
-            if [ ! -f "$KEYTAB" ]; then
-                echo "$KEYTAB not found, skipping $kerbservice kerberos for $ISSUER issuer"
-                KEYTAB=""
-            fi
         elif [[ " $OTHERKERBNAMES " == *" $ISSUER "* ]]; then
             KERBNAME="$ISSUER"
-            KEYTAB=/etc/krb5-$ISSUER.keytab
         else
             KERBNAME="$FIRSTKERBNAME"
+        fi
+        KEYTAB=/etc/krb5-$KERBNAME.keytab
+        if [ "$KERBNAME" = "$FIRSTKERBNAME" ] && [ ! -f $KEYTAB ]; then
             KEYTAB=/etc/krb5.keytab
         fi
+        if [ ! -f "$KEYTAB" ]; then
+            echo "$KEYTAB not found, skipping $kerbservice kerberos for $ISSUER issuer"
+            KEYTAB=""
+        fi
+
         if [ -n "$KEYTAB" ] && [ "$KERBNAME" != "$CURRENTKERBNAME" ]; then
             CURRENTKERBNAME="$KERBNAME"
             KERBCONFIGCHANGED=false
