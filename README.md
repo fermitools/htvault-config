@@ -206,11 +206,12 @@ More than one kerberos service may be defined.  Issuers will be
 associated with the first defined service by default.  If an issuer
 name matches one of the additional kerberos service names, that will
 be used instead, or an issuer can explicitly select a kerberos service
-with the `kerbservice` keyword.  Vault will the first service's keytab
-from `/etc/krb5.keytab`.  Subsequent services expect to find a keytab in
-`/etc/krb5-<name>.keytab` where `<name>` is the kerberos service name
-defined here.  Each keytab should have a "host" key in it matching the
-machine name.
+with the `kerbservice` keyword.  
+
+Vault reads keytabs from `/etc/krb5-<name>.keytab` where `<name>` is
+the kerberos service name defined here.  If that file does not exist
+the first kerberos service will read from `/etc/krb5.keytab` instead.
+Each keytab should have a "host" key in it matching the machine name.
 
 As examples here is a configuration for Fermilab supporting both fnal
 and ligo kerberos services, and another supporting a CERN kerberos
