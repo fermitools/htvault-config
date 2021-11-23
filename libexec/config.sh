@@ -163,7 +163,7 @@ updateenabledmods()
     ENABLEDMODS="`
         (vault auth list -format=json|jq keys
          vault secrets list -format=json|jq keys)| \
-          egrep "(kerberos|oidc|oauth)"| \
+          egrep "(kerberos|oidc|oauth|ssh)"| \
            sed 's/"//g;s-/,--;s-[^ /]*/--'`"
     # remove newlines
     ENABLEDMODS="`echo $ENABLEDMODS`"
@@ -202,7 +202,7 @@ rm -f policies/*.new # may be left over from previous aborted run
 POLICIES=""
 DELETEDPOLICIES=""
 ISFIRST=true
-POLICYTYPES="oidc"
+POLICYTYPES="ssh oidc"
 FIRSTKERBNAME=""
 OTHERKERBNAMES=""
 
@@ -248,6 +248,11 @@ if ! modenabled oauth; then
 else
     OAUTHENABLED=true
 fi
+if ! modenabled ssh; then
+    vault auth enable ssh
+    vault write auth/ssh/config ssh_ca_public_keys=
+fi
+
 # disable modules that can be enabled during the first initialization
 if modenabled oauthapp; then
     vault secrets disable oauthapp
@@ -255,6 +260,7 @@ fi
 if modenabled oidc; then
     vault auth disable oidc
 fi
+updateenabledmods
 
 check_secrets_config()
 {
@@ -484,9 +490,16 @@ EOF
             if [ "$POLICYTYPE" = kerberos ]; then
                 POLICYISSUER="${POLICYTYPE}-${ISSUER}_${ROLE}"
                 POLICYNAME="$POLICYISSUER"
+            elif [ "$POLICYTYPE" = ssh ]; then
+                POLICYISSUER="${POLICYTYPE}"
+                POLICYNAME="$POLICYISSUER"
             else
                 POLICYISSUER="${POLICYTYPE}-${ISSUER}"
                 POLICYNAME="${POLICYISSUER}_${ROLE}"
+            fi
+            if [[ " $POLICIES " == *"$POLICYNAME"* ]]; then
+                # already done
+                continue
             fi
             OLDPOLICYNAME="${POLICYTYPE}${ISSUER}_${ROLE}"
             if vault policy read $OLDPOLICYNAME >/dev/null 2>&1; then

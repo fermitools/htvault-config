@@ -1,8 +1,10 @@
-%define tarball_version 1.10
+%define tarball_version 1.11
 %define plugin1_name vault-plugin-auth-jwt
-%define plugin1_version 0.11.1
-%define plugin2_name vault-plugin-secrets-oauthapp
-%define plugin2_version 3.0.0
+%define plugin1_version 0.11.2
+%define plugin2_name vault-plugin-auth-ssh
+%define plugin2_version 0.0.2
+%define plugin3_name vault-plugin-secrets-oauthapp
+%define plugin3_version 3.0.0
 
 # This is to avoid
 #   *** ERROR: No build ID note found
@@ -46,13 +48,20 @@ export PATH=$GOPATH/bin:$PATH
 export GOPROXY=file://$(go env GOMODCACHE)/cache/download
 PLUGIN1_VERSION=%{plugin1_version}
 PLUGIN2_VERSION=%{plugin2_version}
+PLUGIN3_VERSION=%{plugin3_version}
 PLUGIN1_VERSION=${PLUGIN1_VERSION#commit/}
 PLUGIN2_VERSION=${PLUGIN2_VERSION#commit/}
+PLUGIN3_VERSION=${PLUGIN3_VERSION#commit/}
+
 cd %{plugin1_name}-${PLUGIN1_VERSION}
 # skip the git in the build script
 ln -s /bin/true git
 PATH=:$PATH make dev
+
 cd ../%{plugin2_name}-${PLUGIN2_VERSION}
+make build
+
+cd ../%{plugin3_name}-${PLUGIN3_VERSION}
 make
 cd ..
 
@@ -63,10 +72,13 @@ PLUGINDIR=$LIBEXECDIR/plugins
 mkdir -p $PLUGINDIR
 PLUGIN1_VERSION=%{plugin1_version}
 PLUGIN2_VERSION=%{plugin2_version}
+PLUGIN3_VERSION=%{plugin3_version}
 PLUGIN1_VERSION=${PLUGIN1_VERSION#commit/}
 PLUGIN2_VERSION=${PLUGIN2_VERSION#commit/}
+PLUGIN3_VERSION=${PLUGIN3_VERSION#commit/}
 cp %{plugin1_name}-${PLUGIN1_VERSION}/bin/%{plugin1_name} $PLUGINDIR
-cp %{plugin2_name}-${PLUGIN2_VERSION}/bin/%{plugin2_name} $PLUGINDIR
+cp %{plugin2_name}-${PLUGIN2_VERSION}/vault/plugins/%{plugin2_name} $PLUGINDIR
+cp %{plugin3_name}-${PLUGIN3_VERSION}/bin/%{plugin3_name} $PLUGINDIR
 cd ../%{name}-%{version}
 mkdir -p $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/config.d
 mkdir -p $RPM_BUILD_ROOT/%{_sysconfdir}/logrotate.d
@@ -82,6 +94,7 @@ cp libexec/*.sh libexec/*.template libexec/*.py $LIBEXECDIR
 mv $LIBEXECDIR/plugin-wrapper.sh $LIBEXECDIR/plugins
 ln -s plugin-wrapper.sh $LIBEXECDIR/plugins/%{plugin1_name}.sh
 ln -s plugin-wrapper.sh $LIBEXECDIR/plugins/%{plugin2_name}.sh
+ln -s plugin-wrapper.sh $LIBEXECDIR/plugins/%{plugin3_name}.sh
 mkdir -p $RPM_BUILD_ROOT%{_sharedstatedir}/%{name}
 mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/log/%{name}
 
