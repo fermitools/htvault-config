@@ -185,7 +185,7 @@ loadplugin()
     typeset PLUGIN="vault-plugin-$1.sh"
     typeset SHA="`sha256sum $LIBEXEC/plugins/$PLUGIN|awk '{print $1}'`"
     typeset CATPATH="sys/plugins/catalog/$2"
-    if [ "`vault read $CATPATH -format=json 2>/dev/null|jq -r .data.sha256`" != "$SHA" ]; then
+    if [ "`vault read -field=sha256 $CATPATH 2>/dev/null`" != "$SHA" ]; then
 	echo "Defining plugin $1"
 	vault write $CATPATH sha256=$SHA command=$PLUGIN
     fi
@@ -197,12 +197,31 @@ if [ "$(vault audit list -format=json|jq -r .\"file/\".options.file_path)" != $A
     vault audit enable file file_path=$AUDITLOG log_raw=true
 fi
 
+process_policy()
+{
+    POLICY=$1
+    if [ ! -f policies/${POLICY}.hcl ] || \
+            ! cmp -s policies/${POLICY}.hcl.new policies/${POLICY}.hcl; then
+        if [ -f policies/${POLICY}.hcl ]; then
+            mv policies/${POLICY}.hcl policies/${POLICY}.hcl.old
+        fi
+        mv policies/${POLICY}.hcl.new policies/${POLICY}.hcl
+	chmod a-w policies/${POLICY}.hcl
+	vault policy write ${POLICY} policies/${POLICY}.hcl
+    else
+        rm -f policies/${POLICY}.hcl.new
+    fi
+}
+
 mkdir -p policies
 rm -f policies/*.new # may be left over from previous aborted run
 POLICIES=""
 DELETEDPOLICIES=""
 ISFIRST=true
 POLICYTYPES="ssh oidc"
+if [ "$_ssh_self_registration" == "allowed" ]; then
+    POLICYTYPES="$POLICYTYPES sshregister"
+fi
 FIRSTKERBNAME=""
 OTHERKERBNAMES=""
 
@@ -241,6 +260,7 @@ done
 
 loadplugin secrets-oauthapp secret/oauth
 loadplugin auth-jwt auth/oidc
+loadplugin auth-ssh auth/ssh
 updateenabledmods
 if ! modenabled oauth; then
     OAUTHENABLED=false
@@ -251,6 +271,9 @@ fi
 if ! modenabled ssh; then
     vault auth enable ssh
     vault write auth/ssh/config ssh_ca_public_keys=
+fi
+if [ "$(vault read -field=token_policies auth/ssh/config 2>/dev/null)" != "[ssh tokenops]" ]; then
+    vault write auth/ssh/config token_policies=ssh,tokenops
 fi
 
 # disable modules that can be enabled during the first initialization
@@ -298,6 +321,13 @@ disable_role()
     POLICYNAME=oidc-${ISSUER}_${ROLE}
     DELETEDPOLICIES="$DELETEDPOLICIES $POLICYNAME"
 }
+
+# global policies
+GLOBALPOLICIES="tokenops"
+for POLICY in $GLOBALPOLICIES; do
+    cat $LIBEXEC/${POLICY}policy.template >policies/${POLICY}.hcl.new
+    process_policy $POLICY
+done
 
 if [ "$_old_issuers" != "$_issuers" ]; then
     # The issuers list changed
@@ -386,6 +416,12 @@ EOF
         if [ ! -f policies/tokenops.hcl ]; then
             CHANGED=true
         fi
+        if [ "$_ssh_self_registration" != "$_old_ssh_self_registration" ]; then
+            CHANGED=true
+            if [ "$_old_ssh_self_registration" = "allowed" ]; then
+                DELETEDPOLICIES="$DELETEDPOLICIES sshregister-${ISSUER}"
+            fi
+        fi
     fi
 
     KEYTAB=""
@@ -429,30 +465,8 @@ EOF
     fi
 
     for ROLE in $roles; do
-        eval scopes=\"\$_issuers_${ISSUER//-/_}_roles_${ROLE//-/_}_scopes\"
-        eval old_scopes=\"\$_old_issuers_${ISSUER//-/_}_roles_${ROLE//-/_}_scopes\"
-        POLICYNAME=oidc-${ISSUER}_${ROLE}
-        if ! $ENABLED || $CHANGED || [ "$scopes" != "$old_scopes" ] || [ ! -f policies/${POLICYNAME}.hcl ]; then
-            # use some json input in order to have nested parameters
-            echo "Configuring $VPATH role $ROLE with scopes $scopes"
-            vault write $VPATH/role/$ROLE - \
-                role_type="oidc" \
-                user_claim="$credclaim" \
-                groups_claim="" \
-                oidc_scopes="$scopes" \
-                token_no_default_policy=true \
-                policies=${POLICYNAME},tokenops \
-                callback_mode="${callbackmode:-device}" \
-                poll_interval=3 \
-                allowed_redirect_uris="$REDIRECT_URIS" \
-                verbose_oidc_logging=true \
-                <<EOF
-                {
-                    "claim_mappings": { "$credclaim" : "credkey" },
-                    "oauth2_metadata": ["refresh_token"]
-                }
-EOF
-        fi
+        # Do kerberos before policies so all the kerberos accessors are
+        #  available.  Issuer accessors are already created above.
 
         if [ -n "$KEYTAB" ]; then
             KERBCHANGED=$KERBCONFIGCHANGED
@@ -487,17 +501,25 @@ EOF
         fi
 
         for POLICYTYPE in $POLICYTYPES; do
+            ACCESSORTYPE=$POLICYTYPE
             if [ "$POLICYTYPE" = kerberos ]; then
                 POLICYISSUER="${POLICYTYPE}-${ISSUER}_${ROLE}"
                 POLICYNAME="$POLICYISSUER"
             elif [ "$POLICYTYPE" = ssh ]; then
                 POLICYISSUER="${POLICYTYPE}"
                 POLICYNAME="$POLICYISSUER"
-            else
+            elif [ "$POLICYTYPE" = sshregister ]; then
+                ACCESSORTYPE=oidc
+                POLICYISSUER="${ACCESSORTYPE}-${ISSUER}"
+                POLICYNAME="${POLICYTYPE}-${ISSUER}"
+            elif [ "$POLICYTYPE" = oidc ]; then
                 POLICYISSUER="${POLICYTYPE}-${ISSUER}"
                 POLICYNAME="${POLICYISSUER}_${ROLE}"
+            else
+                echo "Unrecognized policy type $POLICYTYPE"
+                continue
             fi
-            if [[ " $POLICIES " == *"$POLICYNAME"* ]]; then
+            if [[ " $POLICIES " == *" $POLICYNAME "* ]]; then
                 # already done
                 continue
             fi
@@ -506,10 +528,41 @@ EOF
                 # only happens once after an upgrade
                 DELETEDPOLICIES="$DELETEDPOLICIES $OLDPOLICYNAME"
             fi
-            POLICIES="$POLICIES $POLICYNAME"
             ACCESSOR="`vault read sys/auth -format=json|jq -r '.data."'$POLICYISSUER'/".accessor'`"
-            sed -e "s,<issuer>,$ISSUER," -e "s/<${POLICYTYPE}>/$ACCESSOR/g" -e "s/@<domain>/$policydomain/" -e "s/<role>/$ROLE/" $LIBEXEC/${POLICYTYPE}policy.template >>policies/${POLICYNAME}.hcl.new
+            sed -e "s,<issuer>,$ISSUER," -e "s/<${ACCESSORTYPE}>/$ACCESSOR/g" -e "s/@<domain>/$policydomain/" -e "s/<role>/$ROLE/" $LIBEXEC/${POLICYTYPE}policy.template >>policies/${POLICYNAME}.hcl.new
+            POLICIES="$POLICIES $POLICYNAME"
+            process_policy $POLICYNAME
         done
+
+        eval scopes=\"\$_issuers_${ISSUER//-/_}_roles_${ROLE//-/_}_scopes\"
+        eval old_scopes=\"\$_old_issuers_${ISSUER//-/_}_roles_${ROLE//-/_}_scopes\"
+        POLICYNAME=oidc-${ISSUER}_${ROLE}
+        SSHPOLICY=""
+        if [ "$_ssh_self_registration" == "allowed" ]; then
+            SSHPOLICY=",sshregister-${ISSUER}"
+        fi
+        if ! $ENABLED || $CHANGED || [ "$scopes" != "$old_scopes" ] || [ ! -f policies/${POLICYNAME}.hcl ]; then
+            # use some json input in order to have nested parameters
+            echo "Configuring $VPATH role $ROLE with scopes $scopes"
+            vault write $VPATH/role/$ROLE - \
+                role_type="oidc" \
+                user_claim="$credclaim" \
+                groups_claim="" \
+                oidc_scopes="$scopes" \
+                token_no_default_policy=true \
+                policies=${POLICYNAME}${SSHPOLICY},tokenops \
+                callback_mode="${callbackmode:-device}" \
+                poll_interval=3 \
+                allowed_redirect_uris="$REDIRECT_URIS" \
+                verbose_oidc_logging=true \
+                <<EOF
+                {
+                    "claim_mappings": { "$credclaim" : "credkey" },
+                    "oauth2_metadata": ["refresh_token"]
+                }
+EOF
+        fi
+
     done
 
     CHANGED=false
@@ -569,11 +622,6 @@ EOF
     fi
 done
 
-# global policies
-for POLICY in tokenops; do
-    cat $LIBEXEC/${POLICY}policy.template >policies/${POLICY}.hcl.new
-done
-POLICIES="$POLICIES tokenops"
 if [ -f policies/tokencreate.hcl ]; then
     DELETEDPOLICIES="$DELETEDPOLICIES tokencreate"
 fi
@@ -581,20 +629,6 @@ fi
 for POLICY in $DELETEDPOLICIES; do
     rm -f policies/${POLICY}.hcl*
     vault policy delete ${POLICY}
-done
-
-for POLICY in $POLICIES; do
-    if [ ! -f policies/${POLICY}.hcl ] || \
-            ! cmp -s policies/${POLICY}.hcl.new policies/${POLICY}.hcl; then
-        if [ -f policies/${POLICY}.hcl ]; then
-            mv policies/${POLICY}.hcl policies/${POLICY}.hcl.old
-        fi
-        mv policies/${POLICY}.hcl.new policies/${POLICY}.hcl
-	chmod a-w policies/${POLICY}.hcl
-	vault policy write ${POLICY} policies/${POLICY}.hcl
-    else
-        rm -f policies/${POLICY}.hcl.new
-    fi
 done
 
 echo "Completed vault configuration at `date`"
