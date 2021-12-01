@@ -1,0 +1,9 @@
+path "auth/ssh/role/{{identity.entity.aliases.<oidc>.name}}" {
+    capabilities = [ "create","update" ]
+    denied_parameters = {
+        "public_keys"   = ["@*"]
+    }
+    allowed_parameters = {
+        "public_keys"    = []
+    }
+}
