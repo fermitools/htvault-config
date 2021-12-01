@@ -163,9 +163,8 @@ updateenabledmods()
     ENABLEDMODS="`
         (vault auth list -format=json|jq keys
          vault secrets list -format=json|jq keys)| \
-          egrep "(kerberos|oidc|oauth|ssh)"| \
-           sed 's/"//g;s-/,--;s-[^ /]*/--'`"
-    # remove newlines
+          grep /|sed 's/"//g;s-/,--;s-[^ /]*/--'`"
+    # remove newlines and extra spaces
     ENABLEDMODS="`echo $ENABLEDMODS`"
 }
 updateenabledmods
@@ -174,7 +173,7 @@ modenabled()
 {
     case " $ENABLEDMODS " in
 	*" $1 "*)
-            return
+            return 0
             ;;
     esac
     return 1
@@ -218,9 +217,14 @@ rm -f policies/*.new # may be left over from previous aborted run
 POLICIES=""
 DELETEDPOLICIES=""
 ISFIRST=true
-POLICYTYPES="ssh oidc"
-if [ "$_ssh_self_registration" == "allowed" ]; then
-    POLICYTYPES="$POLICYTYPES sshregister"
+POLICYTYPES="oidc"
+USESSH=false
+if [ "$_ssh_self_registration" != "" ]; then
+    USESSH=true
+    POLICYTYPES="$POLICYTYPES ssh"
+    if [ "$_ssh_self_registration" == "allowed" ]; then
+        POLICYTYPES="$POLICYTYPES sshregister"
+    fi
 fi
 FIRSTKERBNAME=""
 OTHERKERBNAMES=""
@@ -268,12 +272,18 @@ if ! modenabled oauth; then
 else
     OAUTHENABLED=true
 fi
-if ! modenabled ssh; then
-    vault auth enable ssh
-    vault write auth/ssh/config ssh_ca_public_keys=
-fi
-if [ "$(vault read -field=token_policies auth/ssh/config 2>/dev/null)" != "[ssh tokenops]" ]; then
-    vault write auth/ssh/config token_policies=ssh,tokenops
+if $USESSH; then
+    if ! modenabled ssh; then
+        vault auth enable ssh
+        vault write auth/ssh/config ssh_ca_public_keys=
+    fi
+    if [ "$(vault read -field=token_policies auth/ssh/config 2>/dev/null)" != "[ssh tokenops]" ]; then
+        vault write auth/ssh/config token_policies=ssh,tokenops
+    fi
+else
+    if modenabled ssh; then
+        vault auth disable ssh
+    fi
 fi
 
 # disable modules that can be enabled during the first initialization
@@ -417,8 +427,10 @@ EOF
             CHANGED=true
         fi
         if [ "$_ssh_self_registration" != "$_old_ssh_self_registration" ]; then
-            CHANGED=true
-            if [ "$_old_ssh_self_registration" = "allowed" ]; then
+            if [ "$_ssh_self_registration" = "allowed" ]; then
+                CHANGED=true
+            elif [ "$_old_ssh_self_registration" = "allowed" ]; then
+                CHANGED=true
                 DELETEDPOLICIES="$DELETEDPOLICIES sshregister-${ISSUER}"
             fi
         fi
