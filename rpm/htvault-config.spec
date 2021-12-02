@@ -2,7 +2,7 @@
 %define plugin1_name vault-plugin-auth-jwt
 %define plugin1_version 0.11.2
 %define plugin2_name vault-plugin-auth-ssh
-%define plugin2_version 0.0.2
+%define plugin2_version 0.1.0
 %define plugin3_name vault-plugin-secrets-oauthapp
 %define plugin3_version 3.0.0
 
@@ -15,7 +15,7 @@
 
 Summary: Configuration for Hashicorp Vault for use with htgettoken client
 Name: htvault-config
-Version: 1.10
+Version: 1.11
 Release: 1%{?dist}
 Group: Applications/System
 License: BSD
@@ -27,7 +27,7 @@ Source0: %{name}-%{version}.tar.gz
 # create with ./make-source-tarball
 Source1: %{name}-src-%{tarball_version}.tar.gz
 
-Requires: vault >= 1.8.4
+Requires: vault >= 1.9.0
 Requires: jq
 Requires: python3-PyYAML
 
@@ -113,6 +113,10 @@ systemctl daemon-reload
 %attr(750, vault,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+* Wed Dec  1 2021 Dave Dykstra <dwd@fnal.gov> 1.11-1
+- Add support for ssh-agent authentication, including self-registering of
+  ssh public keys.
+
 * Mon Nov 15 2021 Dave Dykstra <dwd@fnal.gov> 1.10-1
 - Fix problem that /etc/krb5-<name>.keytab was preferred for first service
   only when the kerbservice was explicitly defined for an issuer.  Now it
