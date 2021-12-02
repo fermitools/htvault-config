@@ -4,20 +4,18 @@ newgit="eval"
 if [[ "`lsb_release -rs`" =~ ^7\. ]]; then
     newgit="scl enable rh-git218"
 fi
-for V in plugin1_name plugin1_version plugin2_name plugin2_version; do
-    eval "`sed -n "s/^%define $V /$V=/p" rpm/htvault-config.spec`"
-done
+for N in 1 2 3; do
+    for V in plugin${N}_name plugin${N}_version; do
+        eval "`sed -n "s/^%define $V /$V=/p" rpm/htvault-config.spec`"
+    done
 
-plugin1_prefix=v
-plugin2_prefix=v
-if [[ "$plugin1_version" == commit/* ]]; then
-    plugin1_prefix=""
-    plugin1_version=${plugin1_version#commit/}
-fi
-if [[ "$plugin2_version" == commit/* ]]; then
-    plugin1_prefix=""
-    plugin1_version=${plugin2_version#commit/}
-fi
+    eval plugin${N}_prefix=v
+    eval plugin_version=\${plugin${N}_version}
+    if [[ "$plugin_version" == commit/* ]]; then
+        eval plugin${N}_prefix=""
+        eval plugin${N}_version=\${plugin_version#commit/}
+    fi
+done
 
 BASE=htvault-config-src
 GO116="`ls -d $HOME/go1.16.* 2>/dev/null|tail -1`"
@@ -47,9 +45,14 @@ $newgit "make bootstrap"
 go mod vendor
 cd ..
 
-curl -s https://codeload.github.com/puppetlabs/${plugin2_name}/tar.gz/${plugin2_prefix}${plugin2_version} | tar xzf -
+curl -s https://codeload.github.com/42wim/${plugin2_name}/tar.gz/${plugin2_prefix}${plugin2_version} | tar xzf -
 cd ${plugin2_name}-${plugin2_version}
-curl -sL https://github.com/puppetlabs/$plugin2_name/pull/41.diff | patch -p1
+go mod vendor
+cd ..
+
+curl -s https://codeload.github.com/puppetlabs/${plugin3_name}/tar.gz/${plugin3_prefix}${plugin3_version} | tar xzf -
+cd ${plugin3_name}-${plugin3_version}
+curl -sL https://github.com/puppetlabs/$plugin3_name/pull/41.diff | patch -p1
 $newgit "make generate"
 go mod vendor
 cd ..

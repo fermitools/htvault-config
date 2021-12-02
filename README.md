@@ -1,12 +1,16 @@
 # htconfig-vault
 This package configures a Hashicorp Vault server for use with 
 [htgettoken](https://github.com/fermitools/htgettoken).
+Users of htgettoken always have to initially authenticate with OIDC,
+but after that access can be renewed with either kerberos or ssh.
 
-In addition to making it easy to configure the server, it includes
+In addition to making it easy to configure the server, this package includes
 a modified Hashicorp vault plugin
-([vault-plugin-auth-jwt](https://github.com/hashicorp/vault-plugin-auth-jwt))
-and a vault plugin from Puppet Labs
-([vault-plugin-secrets-oauthapp](https://github.com/puppetlabs/vault-plugin-secrets-oauthapp)).
+([vault-plugin-auth-jwt](https://github.com/hashicorp/vault-plugin-auth-jwt)),
+a vault plugin from Puppet Labs
+([vault-plugin-secrets-oauthapp](https://github.com/puppetlabs/vault-plugin-secrets-oauthapp)),
+and another vault plugin from an individual
+([vault-plugin-auth-ssh](https://github.com/42wim/vault-plugin-auth-ssh)).
 
 ## Installation
 
@@ -82,6 +86,10 @@ value.  If there is more than one Kerberos service defined the
 `kerbservice` keyword can be used to select a non-default service by
 name; the default is to select one that matches the name of the issuer
 or otherwise the first one defined.
+
+On the other hand if you want to support ssh instead of kerberos, the
+`credclaim` is still needed but ssh authentication will use whatever
+value the OIDC issuer includes in that claim.
 
 Each role under roles should have the following keywords:
 
@@ -258,6 +266,39 @@ matching the kerberos principal.  For security reasons, if the OIDC
 token issuer accepts multiple IdPs then if one of those other IdPs
 are used the `credclaim` should include the IdP's `@domain` to avoid the
 possibility of overlapping user ids mapping to the same Vault paths.
+
+### SSH configuration
+
+If you want to configure ssh-agent support use the `ssh` top-level
+keyword.  There is only one parameter that needs to be set:
+
+`ssh` keywords
+| Keyword | Meaning |
+|:---     | :--     |
+| self-registration | Whether self registration of keys is allowed |
+
+Set the value to `allowed` if you want to allow the htgettoken 
+`--registerssh` option to self-register ssh public keys, otherwise
+set it to `disallowed`.  Either value will enable ssh authentication.
+For example this could be in 10-ssh.yaml:
+```
+ssh:
+  self-registration: allowed
+```
+
+If you do not allow self-registration, you will need to provide the
+ssh public keys with some other mechanism.  You will need to create a
+vault token that is privileged enough to write into `auth/ssh/role/<user>`
+where `<user>` is the user as identified by the OIDC `credclaim`
+described above, and give it the parameter `public_keys` which is a list
+of public keys.  For example, if the public key is a standard ssh public
+key formatted file:
+```
+$ vault write auth/ssh/role/dwd public_keys=@sshkey.pub
+```
+
+It can also be done with curl or any other http client; see the vault
+documentation for examples.
 
 ### High availability
 
