@@ -1,6 +1,6 @@
 # htconfig-vault
-This package configures a Hashicorp Vault server for use with 
-[htgettoken](https://github.com/fermitools/htgettoken).
+This package configures a [Hashicorp Vault](https://vaultproject.io/) server
+for use with [htgettoken](https://github.com/fermitools/htgettoken).
 Users of htgettoken always have to initially authenticate with OIDC,
 but after that access can be renewed with either kerberos or ssh.
 
