@@ -113,6 +113,10 @@ systemctl daemon-reload
 %attr(750, vault,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+# - Add ability to delete a previously defined configuration by using
+#   a keyword "delete:" under the configuration name and setting it to
+#   any value.
+
 * Wed Mar 23 2022 Dave Dykstra <dwd@fnal.gov> 1.12-1
 - Require vault-1.10.0 and update vault-plugin-auth-jwt to version 0.12.1
   and vault-plugin-auth-ssh to version 0.1.1.
