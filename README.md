@@ -374,6 +374,9 @@ all users are within a LAN it does not need to be accessible through
 firewalls to the internet.  On the other hand if it is a public server
 accessible from anywhere then it does need to have a firewall opening.
 
+With a High-Availability installation, port 8201 needs to be accessible
+between the machines.
+
 ## Starting the service
 
 The htvault-config systemd service ties itself to Vault, so starting or
