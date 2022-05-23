@@ -56,11 +56,14 @@ def merge(old, new):
                 for newval in new:
                     if 'name' in newval and newval['name'] == oldval['name']:
                         knownnames.add(newval['name'])
-                        try:
-                            debug('merging ' + newval['name'])
-                            combinedlist.append(merge(oldval, newval))
-                        except Exception as e:
-                            raise Exception('error merging ' + newval['name'] + ': ' + str(e))
+                        if 'delete' in newval:
+                            debug('deleting ' + newval['name'])
+                        else:
+                            try:
+                                debug('merging ' + newval['name'])
+                                combinedlist.append(merge(oldval, newval))
+                            except Exception as e:
+                                raise Exception('error merging ' + newval['name'] + ': ' + str(e))
                 if oldval['name'] not in knownnames:
                     debug('adding unmerged ' + oldval['name'])
                     knownnames.add(oldval['name'])

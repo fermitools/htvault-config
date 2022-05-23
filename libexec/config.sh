@@ -268,7 +268,7 @@ loadplugin auth-ssh auth/ssh
 updateenabledmods
 if ! modenabled oauth; then
     OAUTHENABLED=false
-    vault secrets enable secret/oauth
+    vault secrets enable -path=secret/oauth oauth
 else
     OAUTHENABLED=true
 fi
@@ -293,6 +293,12 @@ fi
 if modenabled oidc; then
     vault auth disable oidc
 fi
+
+# disable old-style per-issuer secret plugins
+vault secrets list|grep secret/oauth-|awk '{print $1}'|while read MOD; do
+    vault secrets disable $MOD
+done
+
 updateenabledmods
 
 check_secrets_config()
@@ -343,9 +349,8 @@ if [ "$_old_issuers" != "$_issuers" ]; then
     # The issuers list changed
     for ISSUER in $_old_issuers; do
         if ! [[ " $_issuers " == *" $ISSUER "* ]]; then
-            echo "Disabling oidc-$ISSUER, secret/oauth-$ISSUER, and secret/oauth/servers/$ISSUER"
+            echo "Disabling oidc-$ISSUER and secret/oauth/servers/$ISSUER"
             vault auth disable oidc-$ISSUER
-            vault secrets disable secret/oauth-$ISSUER
             vault delete secret/oauth/servers/$ISSUER
 
             for VAR in roles; do
@@ -582,11 +587,9 @@ EOF
         for VAR in url clientid; do
             if eval [ \"\$$VAR\" != \"\$old_$VAR\" ]; then
                 CHANGED=true
-                # server or clientid changed, disable the module to
+                # server or clientid changed, disable the server to
                 #  clear out all old secrets
-                echo "Disabling secret/oauth-$ISSUER"
-                vault secrets disable secret/oauth-$ISSUER
-                updateenabledmods
+                echo "Disabling secret/oauth/servers/$ISSUER"
                 vault delete secret/oauth/servers/$ISSUER
                 break
             fi
@@ -598,26 +601,6 @@ EOF
             fi
         done
     fi
-
-    VPATH=secret/oauth-$ISSUER
-    if ! $ENABLED || $CHANGED; then
-        if ! modenabled oauth-$ISSUER; then
-            echo "Enabling $VPATH"
-            vault secrets enable -path=$VPATH oauthapp
-        fi
-        echo "Configuring $VPATH"
-
-        vault write $VPATH/servers/legacy - \
-            provider="oidc" \
-            provider_options="issuer_url=$url" \
-            <<EOF
-            {
-                "client_id": "$clientid",
-                "client_secret": "$secret"
-            }
-EOF
-    fi
-    check_secrets_config $VPATH
 
     if ! $ENABLED || ! $OAUTHENABLED || $CHANGED; then
         SPATH=secret/oauth/servers/$ISSUER
