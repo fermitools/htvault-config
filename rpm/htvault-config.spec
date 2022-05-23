@@ -1,6 +1,6 @@
-%define tarball_version 1.12
+%define tarball_version 1.13
 %define plugin1_name vault-plugin-auth-jwt
-%define plugin1_version 0.12.1
+%define plugin1_version commit/3a49a6e7428290971327de9ad8795773f16eff92
 %define plugin2_name vault-plugin-auth-ssh
 %define plugin2_version 0.1.1
 %define plugin3_name vault-plugin-secrets-oauthapp
@@ -15,7 +15,7 @@
 
 Summary: Configuration for Hashicorp Vault for use with htgettoken client
 Name: htvault-config
-Version: 1.12
+Version: 1.13
 Release: 1%{?dist}
 Group: Applications/System
 License: BSD
@@ -113,11 +113,14 @@ systemctl daemon-reload
 %attr(750, vault,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
-# - Remove support for old-style per issuer/role secret plugins.  Requires
-#   htgettoken >= 1.7.
-# - Add ability to delete a previously defined configuration by using
-#   a keyword "delete:" under the configuration name and setting it to
-#   any value.
+* Mon May 23 2022 Dave Dykstra <dwd@fnal.gov> 1.13-1
+ - Remove support for old-style per issuer/role secret plugins.  Requires
+   htgettoken >= 1.7.
+ - Add ability to delete a previously defined configuration by using
+   a keyword "delete:" under the configuration name and setting it to
+   any value.
+ - Update vault-plugin-auth-jwt to the latest commit (because the patches
+   had been rebased on it).
 
 * Wed Mar 23 2022 Dave Dykstra <dwd@fnal.gov> 1.12-1
 - Require vault-1.10.0 and update vault-plugin-auth-jwt to version 0.12.1
