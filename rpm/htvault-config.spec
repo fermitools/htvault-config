@@ -113,6 +113,8 @@ systemctl daemon-reload
 %attr(750, vault,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+# - Remove support for old-style per issuer/role secret plugins.  Requires
+#   htgettoken >= 1.7.
 # - Add ability to delete a previously defined configuration by using
 #   a keyword "delete:" under the configuration name and setting it to
 #   any value.
