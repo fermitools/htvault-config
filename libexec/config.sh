@@ -190,10 +190,16 @@ loadplugin()
     fi
 }
 
-AUDITLOG=/var/log/htvault-config/auditlog
-if [ "$(vault audit list -format=json|jq -r .\"file/\".options.file_path)" != $AUDITLOG ]; then
-    echo "Enabling audit log at $AUDITLOG"
-    vault audit enable file file_path=$AUDITLOG log_raw=true
+AUDITLOG="${_cluster_auditlog:-/var/log/htvault-config/auditlog}"
+AUDITFILEPATH="$(vault audit list -format=json|jq -r .\"file/\".options.file_path)"
+if [ "$AUDITFILEPATH" != "$AUDITLOG" ]; then
+    if [ "$AUDITFILEPATH" != "null" ]; then
+        vault audit disable file
+    fi
+    if [ "$AUDITLOG" != "none" ]; then
+        echo "Enabling audit log at $AUDITLOG"
+        vault audit enable file file_path=$AUDITLOG log_raw=true
+    fi
 fi
 
 process_policy()

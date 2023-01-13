@@ -322,6 +322,7 @@ keyword:
 | peer1 | First peer machine |
 | peer2 | Other peer machine |
 | myname | Current machine name (optional, default \`uname -n\`) |
+| auditlog | Path of the audit log (optional default /var/log/htvault-config/auditlog) |
 
 All of the keyword values should be fully qualified domain names.
 It is recommended to put all 3 machines behind a load balancer or DNS
@@ -340,6 +341,17 @@ The `myname` keyword is only needed if \`uname -n\` does not match
 the fully qualified domain name of the current machine when accessing
 it externally.  That keyword may also be used in non-HA, single machine
 configurations for the same purpose.
+
+The `auditlog` keyword specifies an alternate path for the audit log,
+since it can grow large on a busy system.
+The default location is /var/log/htvault-config/auditlog.
+If you move it to a different location, you are responsible for rotating
+the log file.
+The directory will be automatically created and owned by the 'vault' user.
+If it is set to "none", no audit log will be created.
+This keyword may also be used in non-HA configurations, but if it is an
+HA configuration then the keyword needs to have the same value on all
+the systems.
 
 Here is an example:
 

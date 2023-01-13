@@ -1,6 +1,6 @@
-%define tarball_version 1.13
+%define tarball_version 1.14
 %define plugin1_name vault-plugin-auth-jwt
-%define plugin1_version commit/3a49a6e7428290971327de9ad8795773f16eff92
+%define plugin1_version commit/bbbb17e6f946221f19815fcbd964f981828ce517
 %define plugin2_name vault-plugin-auth-ssh
 %define plugin2_version 0.1.1
 %define plugin3_name vault-plugin-secrets-oauthapp
@@ -15,7 +15,7 @@
 
 Summary: Configuration for Hashicorp Vault for use with htgettoken client
 Name: htvault-config
-Version: 1.13
+Version: 1.14
 Release: 1%{?dist}
 Group: Applications/System
 License: BSD
@@ -27,7 +27,7 @@ Source0: %{name}-%{version}.tar.gz
 # create with ./make-source-tarball
 Source1: %{name}-src-%{tarball_version}.tar.gz
 
-Requires: vault >= 1.10.0
+Requires: vault >= 1.12.1
 Requires: jq
 Requires: python3-PyYAML
 
@@ -45,6 +45,7 @@ htgettoken as a client.
 # starts out in %{name}-src-%{tarball_version}
 export GOPATH=$PWD/gopath
 export PATH=$GOPATH/bin:$PATH
+mkdir -p $GOPATH/bin
 export GOPROXY=file://$(go env GOMODCACHE)/cache/download
 PLUGIN1_VERSION=%{plugin1_version}
 PLUGIN2_VERSION=%{plugin2_version}
@@ -113,14 +114,20 @@ systemctl daemon-reload
 %attr(750, vault,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+* Fri Jan 13 2023 Dave Dykstra <dwd@fnal.gov> 1.14-1
+- Add auditlog configuration option.  As part of that, disable the
+  vault systemd ProtectFull and ProtectHome options.
+- Require vault >= 1.12.1.
+- Update the vault-plugin-auth-jwt to the latest upstream commit.
+
 * Mon May 23 2022 Dave Dykstra <dwd@fnal.gov> 1.13-1
- - Remove support for old-style per issuer/role secret plugins.  Requires
-   htgettoken >= 1.7.
- - Add ability to delete a previously defined configuration by using
-   a keyword "delete:" under the configuration name and setting it to
-   any value.
- - Update vault-plugin-auth-jwt to the latest commit (because the patches
-   had been rebased on it).
+- Remove support for old-style per issuer/role secret plugins.  Requires
+  htgettoken >= 1.7.
+- Add ability to delete a previously defined configuration by using
+  a keyword "delete:" under the configuration name and setting it to
+  any value.
+- Update vault-plugin-auth-jwt to the latest commit (because the patches
+  had been rebased on it).
 
 * Wed Mar 23 2022 Dave Dykstra <dwd@fnal.gov> 1.12-1
 - Require vault-1.10.0 and update vault-plugin-auth-jwt to version 0.12.1
