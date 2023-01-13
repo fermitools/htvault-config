@@ -18,11 +18,7 @@ for N in 1 2 3; do
 done
 
 BASE=htvault-config-src
-GO116="`ls -d $HOME/go1.16.* 2>/dev/null|tail -1`"
 set -ex
-if [ -n "$GO116" ]; then
-    PATH="$GO116/bin:$PATH"
-fi
 
 cd "`dirname $0`"
 for OLDBASE in $BASE-*; do

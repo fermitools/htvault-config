@@ -1,5 +1,6 @@
 #!/bin/bash
-# Create vault.hcl from template
+# Create vault.hcl from template, and do any other cluster-wide configuration
+#   that needs to be done as root.
 #
 # This source file is Copyright (c) 2021, FERMI NATIONAL
 #   ACCELERATOR LABORATORY.  All rights reserved.
@@ -45,3 +46,13 @@ cat $LIBEXEC/vault.common.template $LIBEXEC/vault.$TMPLTYPE.template \
         -e "s,<peer1fqdn>,$_cluster_peer1," \
         -e "s,<peer2fqdn>,$_cluster_peer2," \
         >vault.hcl
+
+if [ -n "$_cluster_auditlog" ]; then
+    # if it doesn't exist, make the directory of the auditlog
+    AUDITDIR="${_cluster_auditlog%/*}"
+    if [ ! -d $AUDITDIR ]; then
+        mkdir -p $AUDITDIR
+        chown vault $AUDITDIR
+        chmod 750 $AUDITDIR
+    fi
+fi
