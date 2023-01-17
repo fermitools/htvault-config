@@ -16,6 +16,8 @@ for N in 1 2 3; do
         eval plugin${N}_version=\${plugin_version#commit/}
     fi
 done
+V=gox_version
+eval "`sed -n "s/^%define $V /$V=/p" rpm/htvault-config.spec`"
 
 BASE=htvault-config-src
 set -ex
@@ -33,6 +35,11 @@ mkdir $BASE
 cd $BASE
 mkdir gopath
 export GOPATH=$PWD/gopath
+
+# do the install for its side effects of caching the source files
+go install github.com/mitchellh/gox@v$gox_version
+rm -f $GOPATH/bin/gox
+
 curl -s https://codeload.github.com/hashicorp/${plugin1_name}/tar.gz/${plugin1_prefix}${plugin1_version} | tar xzf -
 cd ${plugin1_name}-${plugin1_version}
 curl -sL https://github.com/hashicorp/$plugin1_name/pull/119.diff | patch -p1
@@ -53,7 +60,6 @@ $newgit "make generate"
 go mod vendor
 cd ..
 cd ..
-
 rm -rf $GOPATH/pkg/mod/cache/vcs
 find $GOPATH/pkg/mod -type d ! -perm -200|xargs chmod u+w
 tar --exclude .git -czf $BASE.tar.gz $BASE

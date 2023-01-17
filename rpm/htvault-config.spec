@@ -5,6 +5,7 @@
 %define plugin2_version 0.1.1
 %define plugin3_name vault-plugin-secrets-oauthapp
 %define plugin3_version 3.0.0
+%define gox_version 1.0.1
 
 # This is to avoid
 #   *** ERROR: No build ID note found
@@ -47,6 +48,8 @@ export GOPATH=$PWD/gopath
 export PATH=$GOPATH/bin:$PATH
 mkdir -p $GOPATH/bin
 export GOPROXY=file://$(go env GOMODCACHE)/cache/download
+go install github.com/mitchellh/gox@v%{gox_version}
+
 PLUGIN1_VERSION=%{plugin1_version}
 PLUGIN2_VERSION=%{plugin2_version}
 PLUGIN3_VERSION=%{plugin3_version}
@@ -114,11 +117,12 @@ systemctl daemon-reload
 %attr(750, vault,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
-* Fri Jan 13 2023 Dave Dykstra <dwd@fnal.gov> 1.14-1
+* Tue Jan 17 2023 Dave Dykstra <dwd@fnal.gov> 1.14-1
 - Add auditlog configuration option.  As part of that, disable the
   vault systemd ProtectFull and ProtectHome options.
 - Require vault >= 1.12.1.
 - Update the vault-plugin-auth-jwt to the latest upstream commit.
+- Include gox in the source tarball.
 
 * Mon May 23 2022 Dave Dykstra <dwd@fnal.gov> 1.13-1
 - Remove support for old-style per issuer/role secret plugins.  Requires
