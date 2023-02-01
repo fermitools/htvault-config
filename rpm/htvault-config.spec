@@ -117,6 +117,8 @@ systemctl daemon-reload
 %attr(750, vault,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+# - Fix bug where the kerberos policydomain option was ignored.
+
 * Tue Jan 17 2023 Dave Dykstra <dwd@fnal.gov> 1.14-1
 - Add auditlog configuration option.  As part of that, disable the
   vault systemd ProtectFull and ProtectHome options.

@@ -195,7 +195,7 @@ The Vault kerberos plugin strips away the kerberos domain name when
 mapping to vault secret storage paths and leaves only the `userid` from
 a `userid@domain`.  For that reason, if you define OIDC issuer
 `credclaim`s whose values contain a `@domain` name then set
-`policydomain` to `@domain` to make the vault kerberos permission
+`policydomain` to `"@domain"` to make the vault kerberos permission
 policies add in that domain name.  In that way both kerberos and OIDC
 issuers will map to the same Vault storage paths, which is what is
 needed.  If the issuer `credclaim`s do not contain `@domain` then setting
