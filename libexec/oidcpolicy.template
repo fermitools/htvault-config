@@ -1,7 +1,11 @@
-path "secret/oauth-<issuer>/creds/{{identity.entity.aliases.<oidc>.name}}:<role>" {
-    capabilities = [ "list", "read", "update" ]
-}
 path "secret/oauth/creds/<issuer>/{{identity.entity.aliases.<oidc>.name}}:<role>" {
+    capabilities = [ "update" ]
+    allowed_parameters = {
+        "server" = ["<issuer>"]
+        "*"      = []
+    }
+}
+path "secret/oauth/creds/<issuer>/{{identity.entity.aliases.<oidc>.name}}/*" {
     capabilities = [ "update" ]
     allowed_parameters = {
         "server" = ["<issuer>"]
@@ -11,16 +15,12 @@ path "secret/oauth/creds/<issuer>/{{identity.entity.aliases.<oidc>.name}}:<role>
 path "secret/oauth/creds/<issuer>/{{identity.entity.aliases.<oidc>.name}}:<role>" {
     capabilities = [ "list", "read" ]
 }
-path "secret/oauth-<issuer>/creds/{{identity.entity.aliases.<oidc>.name}}/*" {
-    capabilities = [ "list", "read", "update" ]
-}
 path "secret/oauth/creds/<issuer>/{{identity.entity.aliases.<oidc>.name}}/*" {
-    capabilities = [ "update" ]
-    allowed_parameters = {
-        "server" = ["<issuer>"]
-        "*"      = []
-    }
+    capabilities = [ "list", "read" ]
 }
-path "secret/oauth/creds/<issuer>/{{identity.entity.aliases.<oidc>.name}}/*" {
+path "secret/oauth/sts/<issuer>/{{identity.entity.aliases.<oidc>.name}}:<role>" {
+    capabilities = [ "list", "read" ]
+}
+path "secret/oauth/sts/<issuer>/{{identity.entity.aliases.<oidc>.name}}/*" {
     capabilities = [ "list", "read" ]
 }
