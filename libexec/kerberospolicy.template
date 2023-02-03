@@ -1,12 +1,12 @@
-path "secret/oauth-<issuer>/creds/{{identity.entity.aliases.<kerberos>.name}}@<domain>:<role>" {
-    capabilities = [ "list", "read" ]
-}
 path "secret/oauth/creds/<issuer>/{{identity.entity.aliases.<kerberos>.name}}@<domain>:<role>" {
     capabilities = [ "list", "read" ]
 }
-path "secret/oauth-<issuer>/creds/{{identity.entity.aliases.<kerberos>.name}}:<role>" {
+path "secret/oauth/creds/<issuer>/{{identity.entity.aliases.<kerberos>.name}}:<role>" {
     capabilities = [ "list", "read" ]
 }
-path "secret/oauth/creds/<issuer>/{{identity.entity.aliases.<kerberos>.name}}:<role>" {
+path "secret/oauth/sts/<issuer>/{{identity.entity.aliases.<kerberos>.name}}@<domain>:<role>" {
+    capabilities = [ "list", "read" ]
+}
+path "secret/oauth/sts/<issuer>/{{identity.entity.aliases.<kerberos>.name}}:<role>" {
     capabilities = [ "list", "read" ]
 }

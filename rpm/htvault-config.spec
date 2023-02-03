@@ -1,10 +1,10 @@
-%define tarball_version 1.14
+%define tarball_version 1.15
 %define plugin1_name vault-plugin-auth-jwt
 %define plugin1_version commit/bbbb17e6f946221f19815fcbd964f981828ce517
 %define plugin2_name vault-plugin-auth-ssh
 %define plugin2_version 0.1.1
 %define plugin3_name vault-plugin-secrets-oauthapp
-%define plugin3_version 3.0.0
+%define plugin3_version 3.1.1
 %define gox_version 1.0.1
 
 # This is to avoid
@@ -117,6 +117,12 @@ systemctl daemon-reload
 %attr(750, vault,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+# - Update to vault-plugin-secrets-oauthapp which adds support for token
+#   exchange at a /sts path instead of /creds.  Keep applying the PR patch
+#   that also adds it under /creds for a transition period until htgettoken
+#   is updated everywhere to use the new path.
+# - Fix bug where the kerberos policydomain option was ignored.
+
 * Tue Jan 17 2023 Dave Dykstra <dwd@fnal.gov> 1.14-1
 - Add auditlog configuration option.  As part of that, disable the
   vault systemd ProtectFull and ProtectHome options.

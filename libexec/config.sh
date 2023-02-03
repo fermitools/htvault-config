@@ -474,7 +474,7 @@ EOF
             elif [ "$SERVICENAME" != "$old_SERVICENAME" ]; then
                 KERBCONFIGCHANGED=true
             fi
-            for VAR in ldapattr ldapdn ldapurl; do
+            for VAR in ldapattr ldapdn ldapurl policydomain; do
                 eval $VAR=\"\$_kerberos_${KERBNAME//-/_}_$VAR\"
                 eval old_$VAR=\"\$_old_kerberos_${KERBNAME//-/_}_$VAR\"
                 if eval [ \"\$$VAR\" != \"\$old_$VAR\" ]; then
