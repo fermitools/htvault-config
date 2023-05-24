@@ -12,6 +12,12 @@ a vault plugin from Puppet Labs
 and another vault plugin from an individual
 ([vault-plugin-auth-ssh](https://github.com/42wim/vault-plugin-auth-ssh)).
 
+## Mailing list
+
+If you set up a Vault server following these instructions, please
+[subscribe to the mailing list](https://listserv.fnal.gov/scripts/wa.exe?SUBED1=HTVAULT-ADMIN&A=1)
+to stay updated on developments or to ask questions.
+
 ## Installation
 
 The rpm is available in the
