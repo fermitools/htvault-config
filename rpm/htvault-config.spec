@@ -118,6 +118,8 @@ systemctl daemon-reload
 %attr(750, vault,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+# - Allow '@' to be included in the ssh plugin's keys.
+
 * Tue Mar  2 2023 Dave Dykstra <dwd@fnal.gov> 1.15-1
 - Update vault-plugin-secrets-oauthapp to 3.1.1 which adds support for token
   exchange at a /sts path instead of /creds.  Keep applying the PR patch
