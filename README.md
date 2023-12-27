@@ -306,6 +306,47 @@ $ vault write auth/ssh/role/dwd public_keys=@sshkey.pub
 It can also be done with curl or any other http client; see the vault
 documentation for examples.
 
+### Rate limits
+
+Since the number of clients of one Vault service can be very large, and
+token issuers put rate limits on the number of requests they accept from
+one of their clients (including Vault), it is important to also put rate
+limits on each of Vault's clients so that one of them cannot end up
+using all the token issuer resources and so block the other Vault
+clients from getting service.  
+
+Vault has its own built-in 
+[rate limit quotas](https://developer.hashicorp.com/vault/docs/concepts/resource-quotas#rate-limit-quotas)
+mechanism, and that can be configured through an htvault-config `ratelimits`
+top-level keyword:
+
+`ratelimits` keywords
+| Keyword | Meaning |
+|:---     | :--     |
+| name | Rate limit name |
+| path | Path within Vault to apply limit to, or "" for all paths |
+| rate | The max number of requests in given interval |
+| interval | The amount of time to enforce the rate |
+| block_interval | The amount of time to block once limit is reached |
+
+The `interval` and `block_interval` default to be in seconds, but
+they're floating point numbers and can end in `s` for seconds, `m`
+for minutes, or `h` for hours.
+
+For example to set a limit for all Vault API paths to 360 requests from
+each client every 5 minutes, and to block for 5 minutes if the limit is
+reached:
+```
+ratelimits:
+  - name: global
+    rate: 360
+    interval: 5m
+    block_interval: 5m
+```
+
+While a client is blocked it will receive `HTTP 429 Too Many Requests`
+responses.
+
 ### High availability
 
 This package also supports an option of 3 Vault servers providing a

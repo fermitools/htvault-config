@@ -157,6 +157,39 @@ if [ -n "$_old_cluster_peer2" ] && [ "$_cluster_peer2" != "$_old_cluster_peer2" 
     vault operator raft remove-peer "$_old_cluster_peer2"
 fi
 
+VTOKEN="X-Vault-Token: $(<~/.vault-token)"
+if [ "$_old_ratelimits" != "$_ratelimits" ]; then
+    # The ratelimits list changed
+    for RATELIMIT in $_old_ratelimits; do
+        if ! [[ " $_ratelimits " == *" $RATELIMIT "* ]]; then
+            echo "Deleting $RATELIMIT rate limit"
+            curl -sS -H "$VTOKEN" -X DELETE $VAULT_ADDR/v1/sys/quotas/rate-limit/"$RATELIMIT"
+        fi
+    done
+fi
+for RATELIMIT in $_ratelimits; do
+    CHANGED=false
+    for VAR in path rate interval block_interval; do
+        eval $VAR=\"\$_ratelimits_${RATELIMIT//-/_}_$VAR\"
+        eval old_$VAR=\"\$_old_ratelimits_${RATELIMIT//-/_}_$VAR\"
+        if eval [ \"\$$VAR\" != \"\$old_$VAR\" ]; then
+            CHANGED=true
+        fi
+    done
+    if ! $CHANGED; then
+        continue
+    fi
+    echo "Setting $RATELIMIT rate limit"
+    curl -sS -H "$VTOKEN" -X POST -d @- $VAULT_ADDR/v1/sys/quotas/rate-limit/"$RATELIMIT" <<EOF
+    {
+        "path" : "$path",
+        "rate" : "$rate",
+        "interval" : "$interval",
+        "block_interval" : "$block_interval"
+    }
+EOF
+done
+
 ENBLEDMODS=""
 updateenabledmods()
 {

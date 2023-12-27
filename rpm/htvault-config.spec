@@ -118,6 +118,8 @@ systemctl daemon-reload
 %attr(750, vault,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+# - Add 'ratelimits' keyword to put a limit on the number of requests per
+#   client per interval.
 # - Allow '@' to be included in the ssh plugin's keys.
 
 * Tue Mar  2 2023 Dave Dykstra <dwd@fnal.gov> 1.15-1
