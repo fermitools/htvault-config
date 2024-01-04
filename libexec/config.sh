@@ -157,39 +157,17 @@ if [ -n "$_old_cluster_peer2" ] && [ "$_cluster_peer2" != "$_old_cluster_peer2" 
     vault operator raft remove-peer "$_old_cluster_peer2"
 fi
 
-VTOKEN="X-Vault-Token: $(<~/.vault-token)"
-if [ "$_old_ratelimits" != "$_ratelimits" ]; then
-    # The ratelimits list changed
-    for RATELIMIT in $_old_ratelimits; do
-        if ! [[ " $_ratelimits " == *" $RATELIMIT "* ]]; then
-            echo "Deleting $RATELIMIT rate limit"
-            curl -sS -H "$VTOKEN" -X DELETE $VAULT_ADDR/v1/sys/quotas/rate-limit/"$RATELIMIT"
-        fi
-    done
-fi
-for RATELIMIT in $_ratelimits; do
-    CHANGED=false
-    for VAR in path rate interval block_interval; do
-        eval $VAR=\"\$_ratelimits_${RATELIMIT//-/_}_$VAR\"
-        eval old_$VAR=\"\$_old_ratelimits_${RATELIMIT//-/_}_$VAR\"
-        if eval [ \"\$$VAR\" != \"\$old_$VAR\" ]; then
-            CHANGED=true
-        fi
-    done
-    if ! $CHANGED; then
-        continue
+ROOTTOKEN="X-Vault-Token: $(<~/.vault-token)"
+for RATELIMIT in $_old_ratelimits; do
+    if ! [[ " $_ratelimits " == *" $RATELIMIT "* ]]; then
+        echo "Deleting $RATELIMIT rate limit"
+    else
+        # All the operations in this script exceed most rate limits
+        # and there's no way to disable it only for localhost
+        echo "Temporarily disabling $RATELIMIT rate limit"
     fi
-    echo "Setting $RATELIMIT rate limit"
-    curl -sS -H "$VTOKEN" -X POST -d @- $VAULT_ADDR/v1/sys/quotas/rate-limit/"$RATELIMIT" <<EOF
-    {
-        "path" : "$path",
-        "rate" : "$rate",
-        "interval" : "$interval",
-        "block_interval" : "$block_interval"
-    }
-EOF
+    curl -sS -H "$ROOTTOKEN" -X DELETE $VAULT_ADDR/v1/sys/quotas/rate-limit/"$RATELIMIT"
 done
-
 ENBLEDMODS=""
 updateenabledmods()
 {
@@ -663,6 +641,30 @@ fi
 for POLICY in $DELETEDPOLICIES; do
     rm -f policies/${POLICY}.hcl*
     vault policy delete ${POLICY}
+done
+
+for RATELIMIT in $_ratelimits; do
+    CHANGED=false
+    for VAR in path rate interval block_interval; do
+        eval $VAR=\"\$_ratelimits_${RATELIMIT//-/_}_$VAR\"
+        eval old_$VAR=\"\$_old_ratelimits_${RATELIMIT//-/_}_$VAR\"
+        if eval [ \"\$$VAR\" != \"\$old_$VAR\" ]; then
+            CHANGED=true
+        fi
+    done
+    if $CHANGED; then
+        echo "Setting $RATELIMIT rate limit"
+    else
+        echo "Restoring $RATELIMIT rate limit"
+    fi
+    curl -sS -H "$ROOTTOKEN" -X POST -d @- $VAULT_ADDR/v1/sys/quotas/rate-limit/"$RATELIMIT" <<EOF
+    {
+        "path" : "$path",
+        "rate" : "$rate",
+        "interval" : "$interval",
+        "block_interval" : "$block_interval"
+    }
+EOF
 done
 
 echo "Completed vault configuration at `date`"
