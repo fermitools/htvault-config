@@ -226,6 +226,9 @@ process_policy()
 	vault policy write ${POLICY} policies/${POLICY}.hcl
     else
         rm -f policies/${POLICY}.hcl.new
+        if [ ! -f policies/${POLICY}.hcl.old ]; then
+            cp policies/${POLICY}.hcl policies/${POLICY}.hcl.old
+        fi
     fi
 }
 
@@ -445,7 +448,7 @@ EOF
                 break
             fi
         done
-        if [ ! -f policies/tokenops.hcl ]; then
+        if [ ! -f policies/tokenops.hcl.old ]; then
             CHANGED=true
         fi
         if [ "$_ssh_self_registration" != "$_old_ssh_self_registration" ]; then
@@ -493,7 +496,7 @@ EOF
                 fi
             done
         fi
-        if [ ! -f policies/tokenops.hcl ]; then
+        if [ ! -f policies/tokenops.hcl.old ]; then
             KERBCONFIGCHANGED=true
         fi
     fi
@@ -517,7 +520,7 @@ EOF
             fi
 
             POLICYNAME=$KERBSERVICE
-            if $KERBCHANGED || [ ! -f policies/$POLICYNAME.hcl ]; then
+            if $KERBCHANGED || [ ! -f policies/$POLICYNAME.hcl.old ]; then
                 echo "Configuring $KERBSERVICE"
                 base64 $KEYTAB >krb5.keytab.base64
                 vault write auth/$KERBSERVICE/config \
@@ -575,7 +578,7 @@ EOF
         if [ "$_ssh_self_registration" == "allowed" ]; then
             SSHPOLICY=",sshregister-${ISSUER}"
         fi
-        if ! $ENABLED || $CHANGED || [ "$scopes" != "$old_scopes" ] || [ ! -f policies/${POLICYNAME}.hcl ]; then
+        if ! $ENABLED || $CHANGED || [ "$scopes" != "$old_scopes" ] || [ ! -f policies/${POLICYNAME}.hcl.old ]; then
             # use some json input in order to have nested parameters
             echo "Configuring $VPATH role $ROLE with scopes $scopes"
             vault write $VPATH/role/$ROLE - \
