@@ -121,6 +121,7 @@ systemctl daemon-reload
 # - Add 'ratelimits' keyword to put a limit on the number of requests per
 #   client per interval.
 # - Allow '@' to be included in the ssh plugin's keys.
+# - Fix bug that prevented reconfiguration when a policy name changed.
 
 * Tue Mar  2 2023 Dave Dykstra <dwd@fnal.gov> 1.15-1
 - Update vault-plugin-secrets-oauthapp to 3.1.1 which adds support for token
