@@ -1,8 +1,8 @@
-%define tarball_version 1.15
+%define tarball_version 1.16
 %define plugin1_name vault-plugin-auth-jwt
-%define plugin1_version 0.15.2
+%define plugin1_version 0.18.0
 %define plugin2_name vault-plugin-auth-ssh
-%define plugin2_version 0.3.0
+%define plugin2_version 0.3.1
 %define plugin3_name vault-plugin-secrets-oauthapp
 %define plugin3_version 3.1.1
 %define gox_version 1.0.1
@@ -16,7 +16,7 @@
 
 Summary: Configuration for Hashicorp Vault for use with htgettoken client
 Name: htvault-config
-Version: 1.15
+Version: 1.16
 Release: 1%{?dist}
 Group: Applications/System
 License: BSD
@@ -28,7 +28,7 @@ Source0: %{name}-%{version}.tar.gz
 # create with ./make-source-tarball
 Source1: %{name}-src-%{tarball_version}.tar.gz
 
-Requires: vault >= 1.13
+Requires: vault >= 1.15
 Requires: jq
 Requires: diffutils
 Requires: python3-PyYAML
@@ -118,12 +118,16 @@ systemctl daemon-reload
 %attr(750, vault,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
-# - Add 'ratelimits' keyword to put a limit on the number of requests per
-#   client per interval.
-# - Allow '@' to be included in the ssh plugin's keys.
-# - Fix bug that prevented reconfiguration when a policy name changed.
+* Fri Jan  5 2024 Dave Dykstra <dwd@fnal.gov> 1.16-1
+- Add 'ratelimits' keyword to put a limit on the number of requests per
+  client per interval.
+- Allow '@' to be included in the ssh plugin's keys.
+- Fix bug that prevented reconfiguration when a policy name changed.
+- Update vault-plugin-auth-jwt to 0.18.0.
+- Update vault-plugin-auth-ssh to 0.3.1.
+- Require vault to be >= 1.15.
 
-* Tue Mar  2 2023 Dave Dykstra <dwd@fnal.gov> 1.15-1
+* Tue May  2 2023 Dave Dykstra <dwd@fnal.gov> 1.15-1
 - Update vault-plugin-secrets-oauthapp to 3.1.1 which adds support for token
   exchange at a /sts path instead of /creds.  Keep applying the PR patch
   that also adds it under /creds for a transition period until htgettoken
