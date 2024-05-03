@@ -1,6 +1,6 @@
-%define tarball_version 1.16
+%define tarball_version 1.17
 %define plugin1_name vault-plugin-auth-jwt
-%define plugin1_version 0.18.0
+%define plugin1_version 0.20.2
 %define plugin2_name vault-plugin-auth-ssh
 %define plugin2_version 0.3.1
 %define plugin3_name vault-plugin-secrets-oauthapp
@@ -118,6 +118,8 @@ systemctl daemon-reload
 %attr(750, vault,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+# update to vault-plugin-auth-jwt 0.20.2
+
 * Fri Jan  5 2024 Dave Dykstra <dwd@fnal.gov> 1.16-1
 - Add 'ratelimits' keyword to put a limit on the number of requests per
   client per interval.
