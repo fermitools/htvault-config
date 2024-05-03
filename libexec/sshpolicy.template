@@ -1,8 +1,8 @@
 path "secret/oauth/creds/{{identity.entity.aliases.<ssh>.metadata.issuer}}/{{identity.entity.aliases.<ssh>.name}}@<domain>:{{identity.entity.aliases.<ssh>.metadata.group}}" {
-    capabilities = [ "list", "read" ]
+    capabilities = [ "list", "read", "delete" ]
 }
 path "secret/oauth/creds/{{identity.entity.aliases.<ssh>.metadata.issuer}}/{{identity.entity.aliases.<ssh>.name}}:{{identity.entity.aliases.<ssh>.metadata.group}}" {
-    capabilities = [ "list", "read" ]
+    capabilities = [ "list", "read", "delete" ]
 }
 path "secret/oauth/sts/{{identity.entity.aliases.<ssh>.metadata.issuer}}/{{identity.entity.aliases.<ssh>.name}}@<domain>:{{identity.entity.aliases.<ssh>.metadata.group}}" {
     capabilities = [ "list", "read" ]

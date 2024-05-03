@@ -118,7 +118,9 @@ systemctl daemon-reload
 %attr(750, vault,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
-# update to vault-plugin-auth-jwt 0.20.2
+# - Give vault tokens the capabilities of deleting secrets and revoking
+#   themselves.
+# - Update to vault-plugin-auth-jwt 0.20.2.
 
 * Fri Jan  5 2024 Dave Dykstra <dwd@fnal.gov> 1.16-1
 - Add 'ratelimits' keyword to put a limit on the number of requests per
