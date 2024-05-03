@@ -2,7 +2,7 @@
 %define plugin1_name vault-plugin-auth-jwt
 %define plugin1_version 0.20.2
 %define plugin2_name vault-plugin-auth-ssh
-%define plugin2_version 0.3.1
+%define plugin2_version 0.3.2
 %define plugin3_name vault-plugin-secrets-oauthapp
 %define plugin3_version 3.1.1
 %define gox_version 1.0.1
@@ -121,6 +121,7 @@ systemctl daemon-reload
 # - Give vault tokens the capabilities of deleting secrets and revoking
 #   themselves.
 # - Update to vault-plugin-auth-jwt 0.20.2.
+# - Update to vault-plugin-auth-ssh 0.3.2.
 
 * Fri Jan  5 2024 Dave Dykstra <dwd@fnal.gov> 1.16-1
 - Add 'ratelimits' keyword to put a limit on the number of requests per

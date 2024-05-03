@@ -50,7 +50,6 @@ cd ..
 
 curl -s https://codeload.github.com/42wim/${plugin2_name}/tar.gz/${plugin2_prefix}${plugin2_version} | tar xzf -
 cd ${plugin2_name}-${plugin2_version}
-curl -sL https://github.com/42wim/$plugin2_name/pull/21.diff | patch -p1
 go mod vendor
 cd ..
 
