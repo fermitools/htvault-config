@@ -1,9 +1,7 @@
 #!/bin/bash
 
-newgit="eval"
-if [[ "`lsb_release -rs`" =~ ^7\. ]]; then
-    newgit="scl enable rh-git218"
-fi
+# use $TMPDIR as temporary space for improved performance
+
 for N in 1 2 3; do
     for V in plugin${N}_name plugin${N}_version; do
         eval "`sed -n "s/^%define $V /$V=/p" rpm/htvault-config.spec`"
@@ -23,6 +21,9 @@ BASE=htvault-config-src
 set -ex
 
 cd "`dirname $0`"
+HERE=$PWD
+cd ${TMPDIR:-/tmp}
+
 for OLDBASE in $BASE-*; do
     if [ -d $OLDBASE/gopath ]; then
 	# this is in case it wasn't fully created and chmodded
@@ -30,7 +31,7 @@ for OLDBASE in $BASE-*; do
     fi
 done
 rm -rf $BASE-*
-BASE="$BASE-`sed -n 's/^%define tarball_version //p' rpm/htvault-config.spec`"
+BASE="$BASE-`sed -n 's/^%define tarball_version //p' $HERE/rpm/htvault-config.spec`"
 mkdir $BASE
 cd $BASE
 mkdir gopath
@@ -44,7 +45,7 @@ curl -s https://codeload.github.com/hashicorp/${plugin1_name}/tar.gz/${plugin1_p
 cd ${plugin1_name}-${plugin1_version}
 curl -sL https://github.com/hashicorp/$plugin1_name/pull/119.diff | patch -p1
 curl -sL https://github.com/hashicorp/$plugin1_name/pull/131.diff | patch -p1
-$newgit "make bootstrap"
+make bootstrap
 go mod vendor
 cd ..
 
@@ -55,12 +56,12 @@ cd ..
 
 curl -s https://codeload.github.com/puppetlabs/${plugin3_name}/tar.gz/${plugin3_prefix}${plugin3_version} | tar xzf -
 cd ${plugin3_name}-${plugin3_version}
-curl -sL https://github.com/puppetlabs/$plugin3_name/pull/41.diff | patch -p1
-$newgit "make generate"
+curl -sL https://github.com/puppetlabs/$plugin3_name/pull/90.diff | patch -p1
+make generate
 go mod vendor
 cd ..
 cd ..
 rm -rf $GOPATH/pkg/mod/cache/vcs
-find $GOPATH/pkg/mod -type d ! -perm -200|xargs chmod u+w
-tar --exclude .git -czf $BASE.tar.gz $BASE
+find $GOPATH/pkg/mod -type d ! -perm -200 -print0|xargs -0 -r chmod u+w
+tar --exclude .git -czf $HERE/$BASE.tar.gz $BASE
 rm -rf $BASE
