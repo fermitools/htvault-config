@@ -13,10 +13,10 @@ path "secret/oauth/creds/<issuer>/{{identity.entity.aliases.<oidc>.name}}/*" {
     }
 }
 path "secret/oauth/creds/<issuer>/{{identity.entity.aliases.<oidc>.name}}:<role>" {
-    capabilities = [ "list", "read" ]
+    capabilities = [ "list", "read", "delete" ]
 }
 path "secret/oauth/creds/<issuer>/{{identity.entity.aliases.<oidc>.name}}/*" {
-    capabilities = [ "list", "read" ]
+    capabilities = [ "list", "read", "delete" ]
 }
 path "secret/oauth/sts/<issuer>/{{identity.entity.aliases.<oidc>.name}}:<role>" {
     capabilities = [ "list", "read" ]

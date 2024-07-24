@@ -1,8 +1,8 @@
-%define tarball_version 1.16
+%define tarball_version 1.17
 %define plugin1_name vault-plugin-auth-jwt
-%define plugin1_version 0.18.0
+%define plugin1_version 0.21.0
 %define plugin2_name vault-plugin-auth-ssh
-%define plugin2_version 0.3.1
+%define plugin2_version 0.3.2
 %define plugin3_name vault-plugin-secrets-oauthapp
 %define plugin3_version 3.1.1
 %define gox_version 1.0.1
@@ -16,19 +16,19 @@
 
 Summary: Configuration for Hashicorp Vault for use with htgettoken client
 Name: htvault-config
-Version: 1.16
+Version: 1.17
 Release: 1%{?dist}
 Group: Applications/System
 License: BSD
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 # download with:
-# $ curl -o htvault-config-%{version}.tar.gz \
-#    https://codeload.github.com/fermitools/htvault-config/tar.gz/v%{version}
+# $ curl -o htvault-config-%%{version}.tar.gz \
+#    https://codeload.github.com/fermitools/htvault-config/tar.gz/v%%{version}
 Source0: %{name}-%{version}.tar.gz
 # create with ./make-source-tarball
 Source1: %{name}-src-%{tarball_version}.tar.gz
 
-Requires: vault >= 1.15
+Requires: vault >= 1.17
 Requires: jq
 Requires: diffutils
 Requires: python3-PyYAML
@@ -118,6 +118,17 @@ systemctl daemon-reload
 %attr(750, vault,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+* Mon Jul 22 2024 Dave Dykstra <dwd@fnal.gov> 1.17-1
+- Add a patch of PR #90 to vault-plugin-secrets-oauthapp which adds caching
+  of tokens exchanged via the /sts path and adds a minimum_seconds option to
+  the API.
+- Give vault tokens the capabilities of deleting secrets and revoking
+  themselves.
+- Update required vault to 1.17.
+- Update vault-plugin-auth-jwt to 0.21.0.
+- Update vault-plugin-auth-ssh to 0.3.2 which includes the patch for '@' 
+  that was previously applied.
+
 * Fri Jan  5 2024 Dave Dykstra <dwd@fnal.gov> 1.16-1
 - Add 'ratelimits' keyword to put a limit on the number of requests per
   client per interval.

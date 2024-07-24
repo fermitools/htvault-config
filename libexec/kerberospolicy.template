@@ -1,8 +1,8 @@
 path "secret/oauth/creds/<issuer>/{{identity.entity.aliases.<kerberos>.name}}@<domain>:<role>" {
-    capabilities = [ "list", "read" ]
+    capabilities = [ "list", "read", "delete" ]
 }
 path "secret/oauth/creds/<issuer>/{{identity.entity.aliases.<kerberos>.name}}:<role>" {
-    capabilities = [ "list", "read" ]
+    capabilities = [ "list", "read", "delete" ]
 }
 path "secret/oauth/sts/<issuer>/{{identity.entity.aliases.<kerberos>.name}}@<domain>:<role>" {
     capabilities = [ "list", "read" ]
