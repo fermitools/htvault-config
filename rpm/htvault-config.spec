@@ -1,6 +1,6 @@
-%define tarball_version 1.17
+%define tarball_version 1.18
 %define plugin1_name vault-plugin-auth-jwt
-%define plugin1_version 0.21.0
+%define plugin1_version commit/a847fcbf231bee58dbd2c38d9b0c20890e74a9c0
 %define plugin2_name vault-plugin-auth-ssh
 %define plugin2_version 0.3.2
 %define plugin3_name vault-plugin-secrets-oauthapp
@@ -16,7 +16,7 @@
 
 Summary: Configuration for Hashicorp Vault for use with htgettoken client
 Name: htvault-config
-Version: 1.17
+Version: 1.18
 Release: 1%{?dist}
 Group: Applications/System
 License: BSD
@@ -118,6 +118,12 @@ systemctl daemon-reload
 %attr(750, vault,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+* Fri Aug 16 2024 Dave Dykstra <dwd@fnal.gov> 1.18-1
+- Restore patch #41 on vault-plugin-secrets-oauthapp which was accidentally
+  dropped.
+- Update to latest commit on vault-plugin-auth-jwt because one of the
+  other patches now depends on it in order to apply cleanly.
+
 * Mon Jul 22 2024 Dave Dykstra <dwd@fnal.gov> 1.17-1
 - Add a patch of PR #90 to vault-plugin-secrets-oauthapp which adds caching
   of tokens exchanged via the /sts path and adds a minimum_seconds option to
