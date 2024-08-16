@@ -56,6 +56,7 @@ cd ..
 
 curl -s https://codeload.github.com/puppetlabs/${plugin3_name}/tar.gz/${plugin3_prefix}${plugin3_version} | tar xzf -
 cd ${plugin3_name}-${plugin3_version}
+curl -sL https://github.com/puppetlabs/$plugin3_name/pull/41.diff | patch -p1
 curl -sL https://github.com/puppetlabs/$plugin3_name/pull/90.diff | patch -p1
 make generate
 go mod vendor
