@@ -21,7 +21,7 @@ to stay updated on developments or to ask questions.
 ## Installation
 
 The rpm is available in the
-[Open Science Grid yum repositories](https://opensciencegrid.org/docs/common/yum/#install-the-osg-repositories).
+[Open Science Grid yum repositories](https://osg-htc.org/docs/common/yum/#install-the-osg-repositories).
 After enabling the OSG repositories, do this as root to install vault
 and htvault-config:
 ```
