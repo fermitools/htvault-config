@@ -1,5 +1,5 @@
 [Unit]
-Description=Vault configuration
+Description=HTVault configuration
 Requires=vault.service
 After=vault.service
 PartOf=vault.service

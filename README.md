@@ -1,16 +1,20 @@
 # htconfig-vault
-This package configures a [Hashicorp Vault](https://vaultproject.io/) server
+This package configures an [OpenBao](https://openbao.org) server
 for use with [htgettoken](https://github.com/fermitools/htgettoken).
 Users of htgettoken always have to initially authenticate with OIDC,
 but after that access can be renewed with either kerberos or ssh.
 
-In addition to making it easy to configure the server, this package includes
-a modified Hashicorp vault plugin
-([vault-plugin-auth-jwt](https://github.com/hashicorp/vault-plugin-auth-jwt)),
-a vault plugin from Puppet Labs
-([vault-plugin-secrets-oauthapp](https://github.com/puppetlabs/vault-plugin-secrets-oauthapp)),
-and another vault plugin from an individual
-([vault-plugin-auth-ssh](https://github.com/42wim/vault-plugin-auth-ssh)).
+In addition to making it easy to configure the server, this package includes an
+([oauth secrets plugin](https://github.com/openbao/openbao-plugin-secrets-oauthapp))
+and a
+([ssh authentication plugin](https://github.com/42wim/vault-plugin-auth-ssh)).
+
+OpenBao is a fully open source fork of
+[Hashicorp Vault](https://vaultproject.io) so that is the history of
+the name of this package.
+The server is still often referred to as a Vault server including on this page.
+Unlike the Vault project, the OpenBao project has accepted our
+modifications so we we can use the builtin jwt/oidc "plugin."
 
 ## Mailing list
 
