@@ -1,10 +1,9 @@
-%define tarball_version 1.18
-%define plugin1_name vault-plugin-auth-jwt
-%define plugin1_version commit/a847fcbf231bee58dbd2c38d9b0c20890e74a9c0
-%define plugin2_name vault-plugin-auth-ssh
-%define plugin2_version 0.3.2
-%define plugin3_name vault-plugin-secrets-oauthapp
-%define plugin3_version 3.1.1
+%define tarball_version 1.19
+%define plugin1_name vault-plugin-auth-ssh
+%define plugin1_version 0.3.4
+%define plugin2_name openbao-plugin-secrets-oauthapp
+%define plugin2_oldname vault-plugin-secrets-oauthapp
+%define plugin2_version 3.2.0
 %define gox_version 1.0.1
 
 # This is to avoid
@@ -14,9 +13,9 @@
 # This is so brp-python-bytecompile uses python3
 %define __python python3
 
-Summary: Configuration for Hashicorp Vault for use with htgettoken client
+Summary: Configuration for OpenBao for use with htgettoken client
 Name: htvault-config
-Version: 1.18
+Version: 1.19
 Release: 1%{?dist}
 Group: Applications/System
 License: BSD
@@ -28,7 +27,7 @@ Source0: %{name}-%{version}.tar.gz
 # create with ./make-source-tarball
 Source1: %{name}-src-%{tarball_version}.tar.gz
 
-Requires: vault >= 1.17
+Requires: openbao >= 2.2.0
 Requires: jq
 Requires: diffutils
 Requires: python3-PyYAML
@@ -40,7 +39,7 @@ BuildRequires: golang
 %setup -q -T -b 1 -n %{name}-src-%{tarball_version}
 
 %description
-Installs plugins and configuration for Hashicorp Vault for use with
+Installs plugins and configuration for OpenBao for use with
 htgettoken as a client.
 
 %build
@@ -53,20 +52,13 @@ go install github.com/mitchellh/gox@v%{gox_version}
 
 PLUGIN1_VERSION=%{plugin1_version}
 PLUGIN2_VERSION=%{plugin2_version}
-PLUGIN3_VERSION=%{plugin3_version}
 PLUGIN1_VERSION=${PLUGIN1_VERSION#commit/}
 PLUGIN2_VERSION=${PLUGIN2_VERSION#commit/}
-PLUGIN3_VERSION=${PLUGIN3_VERSION#commit/}
 
 cd %{plugin1_name}-${PLUGIN1_VERSION}
-# skip the git in the build script
-ln -s /bin/true git
-PATH=:$PATH make dev
-
-cd ../%{plugin2_name}-${PLUGIN2_VERSION}
 make build
 
-cd ../%{plugin3_name}-${PLUGIN3_VERSION}
+cd ../%{plugin2_name}-${PLUGIN2_VERSION}
 make
 cd ..
 
@@ -77,13 +69,10 @@ PLUGINDIR=$LIBEXECDIR/plugins
 mkdir -p $PLUGINDIR
 PLUGIN1_VERSION=%{plugin1_version}
 PLUGIN2_VERSION=%{plugin2_version}
-PLUGIN3_VERSION=%{plugin3_version}
 PLUGIN1_VERSION=${PLUGIN1_VERSION#commit/}
 PLUGIN2_VERSION=${PLUGIN2_VERSION#commit/}
-PLUGIN3_VERSION=${PLUGIN3_VERSION#commit/}
-cp %{plugin1_name}-${PLUGIN1_VERSION}/bin/%{plugin1_name} $PLUGINDIR
-cp %{plugin2_name}-${PLUGIN2_VERSION}/vault/plugins/%{plugin2_name} $PLUGINDIR
-cp %{plugin3_name}-${PLUGIN3_VERSION}/bin/%{plugin3_name} $PLUGINDIR
+cp %{plugin1_name}-${PLUGIN1_VERSION}/vault/plugins/%{plugin1_name} $PLUGINDIR
+cp %{plugin2_name}-${PLUGIN2_VERSION}/bin/%{plugin2_name} $PLUGINDIR/%{plugin2_oldname}
 cd ../%{name}-%{version}
 mkdir -p $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/config.d
 mkdir -p $RPM_BUILD_ROOT/%{_sysconfdir}/logrotate.d
@@ -98,13 +87,20 @@ cp misc/sysconfig $SYSCONFIGDIR/%{name}
 cp libexec/*.sh libexec/*.template libexec/*.py $LIBEXECDIR
 mv $LIBEXECDIR/plugin-wrapper.sh $LIBEXECDIR/plugins
 ln -s plugin-wrapper.sh $LIBEXECDIR/plugins/%{plugin1_name}.sh
-ln -s plugin-wrapper.sh $LIBEXECDIR/plugins/%{plugin2_name}.sh
-ln -s plugin-wrapper.sh $LIBEXECDIR/plugins/%{plugin3_name}.sh
+ln -s plugin-wrapper.sh $LIBEXECDIR/plugins/%{plugin2_oldname}.sh
 mkdir -p $RPM_BUILD_ROOT%{_sharedstatedir}/%{name}
 mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/log/%{name}
 
 %post
 systemctl daemon-reload
+%systemd_post %{name}.service
+
+%preun
+%systemd_preun %{name}.service
+
+%postun
+# restart vault on upgrade
+%systemd_postun_with_restart vault.service
 
 %files
 %dir %attr(750, vault, vault) %{_sysconfdir}/%{name}
@@ -118,6 +114,14 @@ systemctl daemon-reload
 %attr(750, vault,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+* Fri Mar 14 2025 Dave Dykstra <dwd@fnal.gov> 1.19-1
+- Replace vault with openbao-2.2.0 and remove vault-plugin-secrets-jwt
+  (since the builtin version works with openbao).
+- Replace vault-plugin-secrets-oauthapp with openbao-plugin-secrets-oauthapp
+  3.2.0 but still install it as vault-plugins-secrets-oauthapp for upgrade
+  compatibility.
+- Update vault-plugin-auth-ssh to 0.3.4.
+
 * Fri Aug 16 2024 Dave Dykstra <dwd@fnal.gov> 1.18-1
 - Restore patch #41 on vault-plugin-secrets-oauthapp which was accidentally
   dropped.

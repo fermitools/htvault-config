@@ -2,7 +2,7 @@
 
 # use $TMPDIR as temporary space for improved performance
 
-for N in 1 2 3; do
+for N in 1 2; do
     for V in plugin${N}_name plugin${N}_version; do
         eval "`sed -n "s/^%define $V /$V=/p" rpm/htvault-config.spec`"
     done
@@ -41,25 +41,15 @@ export GOPATH=$PWD/gopath
 go install github.com/mitchellh/gox@v$gox_version
 rm -f $GOPATH/bin/gox
 
-curl -s https://codeload.github.com/hashicorp/${plugin1_name}/tar.gz/${plugin1_prefix}${plugin1_version} | tar xzf -
+curl -s https://codeload.github.com/42wim/${plugin1_name}/tar.gz/${plugin1_prefix}${plugin1_version} | tar xzf -
 cd ${plugin1_name}-${plugin1_version}
-curl -sL https://github.com/hashicorp/$plugin1_name/pull/119.diff | patch -p1
-curl -sL https://github.com/hashicorp/$plugin1_name/pull/131.diff | patch -p1
-make bootstrap
 go mod vendor
 cd ..
 
-curl -s https://codeload.github.com/42wim/${plugin2_name}/tar.gz/${plugin2_prefix}${plugin2_version} | tar xzf -
+curl -s https://codeload.github.com/openbao/${plugin2_name}/tar.gz/${plugin2_prefix}${plugin2_version} | tar xzf -
 cd ${plugin2_name}-${plugin2_version}
 go mod vendor
-cd ..
-
-curl -s https://codeload.github.com/puppetlabs/${plugin3_name}/tar.gz/${plugin3_prefix}${plugin3_version} | tar xzf -
-cd ${plugin3_name}-${plugin3_version}
-curl -sL https://github.com/puppetlabs/$plugin3_name/pull/41.diff | patch -p1
-curl -sL https://github.com/puppetlabs/$plugin3_name/pull/90.diff | patch -p1
 make generate
-go mod vendor
 cd ..
 cd ..
 rm -rf $GOPATH/pkg/mod/cache/vcs
