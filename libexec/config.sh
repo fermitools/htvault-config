@@ -192,10 +192,16 @@ modenabled()
 
 loadplugin()
 {
-    typeset PLUGIN="vault-plugin-$1.sh"
+    typeset PLUGIN
+    if [ -f "$LIBEXEC/plugins/openbao-plugin-$1.sh" ]; then
+        PLUGIN="openbao-plugin-$1.sh"
+    else
+        PLUGIN="vault-plugin-$1.sh"
+    fi
     typeset SHA="`sha256sum $LIBEXEC/plugins/$PLUGIN|awk '{print $1}'`"
     typeset CATPATH="sys/plugins/catalog/$2"
-    if [ "`vault read -field=sha256 $CATPATH 2>/dev/null`" != "$SHA" ]; then
+    if [ "`vault read -field=sha256 $CATPATH 2>/dev/null`" != "$SHA" ] || \
+       [ "`vault read -field=command $CATPATH 2>/dev/null`" != "$PLUGIN" ]; then
 	echo "Defining plugin $1"
 	vault write $CATPATH sha256=$SHA command=$PLUGIN
     fi
@@ -283,7 +289,6 @@ for KERBNAME in $_kerberos; do
 done
 
 loadplugin secrets-oauthapp secret/oauth
-loadplugin auth-jwt auth/oidc
 loadplugin auth-ssh auth/ssh
 updateenabledmods
 if ! modenabled oauth; then

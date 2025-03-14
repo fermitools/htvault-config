@@ -92,7 +92,11 @@ for f in files:
         continue
     try:
         with open(f) as fd:
-            data = yaml.load(fd)
+            try:
+                # newer yaml version needs extra parameter
+                data = yaml.load(fd, Loader=yaml.FullLoader)
+            except:
+                data = yaml.load(fd)
     except Exception as e:
         efatal('error loading yaml in ' + f, e)
                  
