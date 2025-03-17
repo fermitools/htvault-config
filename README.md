@@ -491,10 +491,35 @@ issuer and `-i <role>` to select a specific role.
 
 ## Recovery
 
+### Corrupted database
+
 If a vault database somehow gets corrupted and unable to be unsealed
 according to the `startlog`, a way to get it in operation again is to
 remove everything from `/var/lib/htvault-config` (including `.cache`)
-and start vault again.  All the stored secrets will be lost.
+and start vault again.  All the stored secrets will be lost.  If it's
+a high availability cluster, also clear out the other machines.
+
+### Lost quorum
+
+If a high availability cluster loses quorum, for example if all three
+servers are down simultaneously and on start they all say there's no
+active node, you can get the master machine back up on its own by making
+`/var/lib/htvault-config/raft/peers.json` on it with the following
+contents (replacing `htvault1.fnal.gov` with your master node's name):
+```
+[
+  {
+    "id": "htvault1.fnal.gov",
+    "address": "htvault1.fnal.gov:8201",
+    "non_voter": false
+  }
+}
+```
+Then restart or start the vault service on that machine.  After it is
+back up it will remove the `peers.json` file.  The other two machines
+will then need to be reloaded from the master: on each of them remove
+everything from `/var/lib/htvault-config` except for `vaultseal.txt` and
+restart the vault service.
 
 ### Changing high availability cluster machine names
 
