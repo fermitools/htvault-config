@@ -311,7 +311,13 @@ else
     fi
 fi
 
-# disable modules that can be enabled during the first initialization
+if [ "$(vault read -field=builtin sys/plugins/catalog/auth/oidc)" != true ]; then
+    echo "Switching from external auth/oidc plugin to internal"
+    vault delete sys/plugins/catalog/auth/oidc
+    vault plugin reload -plugin=oidc -scope=global
+fi
+
+# disable modules that might have been enabled during the first initialization
 if modenabled oauthapp; then
     vault secrets disable oauthapp
 fi
