@@ -16,7 +16,7 @@
 
 Summary: Configuration for OpenBao for use with htgettoken client
 Name: htvault-config
-Version: 1.19
+Version: 2.0.0
 Release: 1%{?dist}
 Group: Applications/System
 License: BSD
@@ -119,6 +119,14 @@ systemctl daemon-reload
 %attr(750, vault,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+* Thu Mar 20 2025 Dave Dykstra <dwd@fnal.gov> 2.0.0-1
+- Remove the external auth/oidc plugin registration to switch to the
+  builtin plugin.
+- Change to semantic versioning starting at 2.0.0.  Compared to 1.18,
+  the removal of the external vault-plugin-secrets-jwt plugin causes
+  some incompatibility and requires a careful upgrade path in HA
+  installations (that is, upgrade all vault/openbao first).
+
 * Fri Mar 14 2025 Dave Dykstra <dwd@fnal.gov> 1.19-1
 - Replace vault with openbao-2.2.0 and remove vault-plugin-secrets-jwt
   (since the builtin version works with openbao).
