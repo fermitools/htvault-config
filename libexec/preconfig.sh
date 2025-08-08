@@ -52,7 +52,11 @@ if [ -n "$_cluster_auditlog" ]; then
     AUDITDIR="${_cluster_auditlog%/*}"
     if [ ! -d $AUDITDIR ]; then
         mkdir -p $AUDITDIR
-        chown vault $AUDITDIR
         chmod 750 $AUDITDIR
     fi
+    # Handle the transition from older packages when the service was run
+    # under the vault user instead of the openbao user.  Be careful to
+    # handle the case where the auditlog was in a shared directory.
+    find $AUDITDIR -maxdepth 0 -user vault | xargs -r chown openbao
+    find ${_cluster_auditlog}* ! -user openbao | xargs -r chown openbao:openbao
 fi

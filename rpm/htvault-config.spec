@@ -1,5 +1,5 @@
 %define tarball_version 1.19
-%define openbao_version 2.2.0
+%define openbao_version 2.3.2
 %define plugin1_name vault-plugin-auth-ssh
 %define plugin1_version 0.3.4
 %define plugin2_name openbao-plugin-secrets-oauthapp
@@ -16,7 +16,7 @@
 
 Summary: Configuration for OpenBao for use with htgettoken client
 Name: htvault-config
-Version: 2.0.0
+Version: 2.1.0
 Release: 1%{?dist}
 Group: Applications/System
 License: BSD
@@ -28,7 +28,7 @@ Source0: %{name}-%{version}.tar.gz
 # create with ./make-source-tarball
 Source1: %{name}-src-%{tarball_version}.tar.gz
 
-Requires: openbao >= %{openbao_version}
+Requires: openbao-vault-compat >= %{openbao_version}
 Requires: jq
 Requires: diffutils
 Requires: python3-PyYAML
@@ -85,8 +85,8 @@ cp misc/logrotate $RPM_BUILD_ROOT/%{_sysconfdir}/logrotate.d/%{name}
 SYSCONFIGDIR=$RPM_BUILD_ROOT/%{_sysconfdir}/sysconfig
 mkdir -p $SYSCONFIGDIR
 SYSTEMDDIR=$RPM_BUILD_ROOT/lib/systemd/system
-mkdir -p $SYSTEMDDIR/vault.service.d $SYSTEMDDIR/vault.service.wants
-cp misc/systemd.conf $SYSTEMDDIR/vault.service.d/%{name}.conf
+mkdir -p $SYSTEMDDIR/openbao.service.d $SYSTEMDDIR/openbao.service.wants
+cp misc/systemd.conf $SYSTEMDDIR/openbao.service.d/%{name}.conf
 cp misc/config.service $SYSTEMDDIR/%{name}.service
 cp misc/sysconfig $SYSCONFIGDIR/%{name}
 cp libexec/*.sh libexec/*.template libexec/*.py $LIBEXECDIR
@@ -97,6 +97,7 @@ mkdir -p $RPM_BUILD_ROOT%{_sharedstatedir}/%{name}
 mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/log/%{name}
 
 %post
+find %{_sysconfdir}/%{name} %{_sharedstatedir}/%{name} -user vault | xargs -r chown openbao:openbao
 systemctl daemon-reload
 %systemd_post %{name}.service
 
@@ -104,21 +105,26 @@ systemctl daemon-reload
 %systemd_preun %{name}.service
 
 %postun
-# restart vault on upgrade
-%systemd_postun_with_restart vault.service
+# restart openbao on upgrade
+%systemd_postun_with_restart openbao.service
 
 %files
-%dir %attr(750, vault, vault) %{_sysconfdir}/%{name}
+%dir %attr(750, openbao, openbao) %{_sysconfdir}/%{name}
 %dir %attr(750, root, root) %{_sysconfdir}/%{name}/config.d
 %{_sysconfdir}/logrotate.d/%{name}
 %config(noreplace) %{_sysconfdir}/sysconfig/%{name}
 /lib/systemd/system/%{name}.service
-/lib/systemd/system/vault.service.d/%{name}.conf
+/lib/systemd/system/openbao.service.d/%{name}.conf
 %{_libexecdir}/%{name}
-%attr(750, vault, vault) %{_sharedstatedir}/%{name}
-%attr(750, vault,root) %dir %{_localstatedir}/log/%{name}
+%attr(750, openbao, openbao) %{_sharedstatedir}/%{name}
+%attr(750, openbao,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+* Fri Aug  8 2025 Dave Dykstra <dwd@fnal.gov> 2.1.0-1
+- Update to require openbao 2.3.2, which has been updated in preparation
+  for moving it to EPEL by changing the service to run under the openbao
+  user and group id instead of vault.
+
 * Thu Mar 20 2025 Dave Dykstra <dwd@fnal.gov> 2.0.0-1
 - Remove the external auth/oidc plugin registration to switch to the
   builtin plugin.
