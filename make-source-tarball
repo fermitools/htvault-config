@@ -48,10 +48,6 @@ popd
 PATH=$PWD/go/bin:$GOPATH/bin:$PATH
 go version
 
-# do the install for its side effects of caching the source files
-go install github.com/mitchellh/gox@v$gox_version
-rm -f $GOPATH/bin/gox
-
 curl -s https://codeload.github.com/42wim/${plugin1_name}/tar.gz/${plugin1_prefix}${plugin1_version} | tar xzf -
 cd ${plugin1_name}-${plugin1_version}
 go mod vendor
@@ -63,8 +59,15 @@ go mod vendor
 make generate
 cd ..
 cd ..
-rm -rf $GOPATH/pkg/mod/cache/vcs
 find $GOPATH/pkg/mod -type d ! -perm -200 -print0|xargs -0 -r chmod u+w
+rm -rf $GOPATH/pkg
+
+# do the install for its side effects of caching the source files
+go install github.com/mitchellh/gox@v$gox_version
+rm -f $GOPATH/bin/gox
+
+find $GOPATH/pkg/mod -type d ! -perm -200 -print0|xargs -0 -r chmod u+w
+
 pushd $GOSRC
 ./clean.bash
 popd

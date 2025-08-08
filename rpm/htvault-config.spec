@@ -1,4 +1,4 @@
-%define tarball_version 1.19
+%define tarball_version 2.1
 %define openbao_version 2.3.2
 %define plugin1_name vault-plugin-auth-ssh
 %define plugin1_version 0.3.4
