@@ -17,7 +17,7 @@
 Summary: Configuration for OpenBao for use with htgettoken client
 Name: htvault-config
 Version: 2.1.0
-Release: 1%{?dist}
+Release: 2%{?dist}
 Group: Applications/System
 License: BSD
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
@@ -97,7 +97,7 @@ mkdir -p $RPM_BUILD_ROOT%{_sharedstatedir}/%{name}
 mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/log/%{name}
 
 %post
-find %{_sysconfdir}/%{name} %{_sharedstatedir}/%{name} -user vault | xargs -r chown openbao:openbao
+find %{_sysconfdir}/%{name} %{_sharedstatedir}/%{name} %{_localstatedir}/log/%{name} -user vault | xargs -r chown openbao:openbao
 systemctl daemon-reload
 %systemd_post %{name}.service
 
@@ -120,6 +120,10 @@ systemctl daemon-reload
 %attr(750, openbao,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+* Thu Aug 14 2025 Dave Dykstra <dwd@fnal.gov> 2.1.0-2
+- Also chown files that need it in /var/log/htvault-config, in particular
+  the auditlog.
+
 * Fri Aug  8 2025 Dave Dykstra <dwd@fnal.gov> 2.1.0-1
 - Update to require openbao 2.3.2, which has been updated in preparation
   for moving it to EPEL by changing the service to run under the openbao
