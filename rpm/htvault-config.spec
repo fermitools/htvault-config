@@ -17,7 +17,7 @@
 Summary: Configuration for OpenBao for use with htgettoken client
 Name: htvault-config
 Version: 2.1.0
-Release: 2%{?dist}
+Release: 3%{?dist}
 Group: Applications/System
 License: BSD
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
@@ -97,7 +97,7 @@ mkdir -p $RPM_BUILD_ROOT%{_sharedstatedir}/%{name}
 mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/log/%{name}
 
 %post
-find %{_sysconfdir}/%{name} %{_sharedstatedir}/%{name} %{_localstatedir}/log/%{name} -user vault | xargs -r chown openbao:openbao
+find %{_sysconfdir}/%{name} %{_sharedstatedir}/%{name} %{_localstatedir}/log/%{name} -user vault 2>/dev/null| xargs -r chown openbao:openbao
 systemctl daemon-reload
 %systemd_post %{name}.service
 
@@ -120,6 +120,10 @@ systemctl daemon-reload
 %attr(750, openbao,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+* Wed Oct  8 2025 Dave Dykstra <dwd@fnal.gov> 2.1.0-3
+- Avoid showing a disturbing error message from find if the vault user id
+  does not exist, by redirecting stderr from find to /dev/null.
+
 * Thu Aug 14 2025 Dave Dykstra <dwd@fnal.gov> 2.1.0-2
 - Also chown files that need it in /var/log/htvault-config, in particular
   the auditlog.
@@ -133,12 +137,12 @@ systemctl daemon-reload
 - Remove the external auth/oidc plugin registration to switch to the
   builtin plugin.
 - Change to semantic versioning starting at 2.0.0.  Compared to 1.18,
-  the removal of the external vault-plugin-secrets-jwt plugin causes
+  the removal of the external vault-plugin-auth-jwt plugin causes
   some incompatibility and requires a careful upgrade path in HA
   installations (that is, upgrade all vault/openbao first).
 
 * Fri Mar 14 2025 Dave Dykstra <dwd@fnal.gov> 1.19-1
-- Replace vault with openbao-2.2.0 and remove vault-plugin-secrets-jwt
+- Replace vault with openbao-2.2.0 and remove vault-plugin-auth-jwt
   (since the builtin version works with openbao).
 - Replace vault-plugin-secrets-oauthapp with openbao-plugin-secrets-oauthapp
   3.2.0 but still install it as vault-plugins-secrets-oauthapp for upgrade
