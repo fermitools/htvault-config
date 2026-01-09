@@ -26,7 +26,8 @@ to stay updated on developments or to ask questions.
 
 The rpm is available in the
 [Open Science Grid yum repositories](https://osg-htc.org/docs/common/yum/#install-the-osg-repositories).
-After enabling the OSG repositories, do this as root to install vault
+After enabling the OSG repositories, do this as root to install 
+openbao and its vault compatibility layer (which come from EPEL)
 and htvault-config:
 ```
 yum install htvault-config
