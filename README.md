@@ -1,4 +1,4 @@
-# htconfig-vault
+# htvault-config
 This package configures an [OpenBao](https://openbao.org) server
 for use with [htgettoken](https://github.com/fermitools/htgettoken).
 Users of htgettoken always have to initially authenticate with OIDC,
