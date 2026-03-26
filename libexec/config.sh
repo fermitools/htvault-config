@@ -120,11 +120,16 @@ if ! $NOWAIT && [ "`vault status -format=json|jq -r .storage_type`" = "raft" ]; 
     TRY=0
     MAX=20
     while [ "$TRY" -lt "$MAX" ]; do
-	if vault operator raft list-peers; then
-	    break
+        LEADERMSG=""
+        if LISTPEERS="$(vault operator raft list-peers)"; then
+            echo "$LISTPEERS"
+            if echo "$LISTPEERS"|awk '{print $3}'|grep -q leader; then
+                break
+            fi
+            LEADERMSG=" to choose a leader"
 	fi
 	let TRY+=1
-	echo "Waiting for peers, try $TRY"
+	echo "Waiting for peers$LEADERMSG, try $TRY"
 	sleep 1
     done
     if [ "$TRY" -eq "$MAX" ]; then
