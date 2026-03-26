@@ -38,15 +38,15 @@ cd $BASE
 # install required go version
 mkdir gopath
 export GOPATH=$PWD/gopath
-OPENBAOVERSION="`sed -n 's/^%define openbao_version //p' $HERE/rpm/htvault-config.spec`"
-GOVERSION="`curl https://raw.githubusercontent.com/openbao/openbao/refs/tags/v$OPENBAOVERSION/.go-version`"
-curl -sSL https://golang.org/dl/go$GOVERSION.src.tar.gz | tar -xzf -
-pushd go/src
-GOSRC=$PWD
-./make.bash
-popd
-PATH=$PWD/go/bin:$GOPATH/bin:$PATH
-go version
+#OPENBAOVERSION="`sed -n 's/^%define openbao_version //p' $HERE/rpm/htvault-config.spec`"
+#GOVERSION="`curl https://raw.githubusercontent.com/openbao/openbao/refs/tags/v$OPENBAOVERSION/.go-version`"
+#curl -sSL https://golang.org/dl/go$GOVERSION.src.tar.gz | tar -xzf -
+#pushd go/src
+#GOSRC=$PWD
+#./make.bash
+#popd
+#PATH=$PWD/go/bin:$GOPATH/bin:$PATH
+#go version
 
 curl -s https://codeload.github.com/42wim/${plugin1_name}/tar.gz/${plugin1_prefix}${plugin1_version} | tar xzf -
 cd ${plugin1_name}-${plugin1_version}
@@ -68,8 +68,8 @@ rm -f $GOPATH/bin/gox
 
 find $GOPATH/pkg/mod -type d ! -perm -200 -print0|xargs -0 -r chmod u+w
 
-pushd $GOSRC
-./clean.bash
-popd
+#pushd $GOSRC
+#./clean.bash
+#popd
 tar --exclude .git -czf $HERE/$BASE.tar.gz $BASE
 rm -rf $BASE

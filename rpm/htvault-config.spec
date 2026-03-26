@@ -1,10 +1,10 @@
-%define tarball_version 2.1
-%define openbao_version 2.3.2
+%define tarball_version 2.2
+%define openbao_version 2.5.0
 %define plugin1_name vault-plugin-auth-ssh
 %define plugin1_version 0.3.4
 %define plugin2_name openbao-plugin-secrets-oauthapp
 %define plugin2_oldname vault-plugin-secrets-oauthapp
-%define plugin2_version 3.2.0
+%define plugin2_version 3.3.0
 %define gox_version 1.0.1
 
 # This is to avoid
@@ -16,8 +16,8 @@
 
 Summary: Configuration for OpenBao for use with htgettoken client
 Name: htvault-config
-Version: 2.1.0
-Release: 3%{?dist}
+Version: 2.2.0
+Release: 1%{?dist}
 Group: Applications/System
 License: BSD
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
@@ -45,9 +45,9 @@ htgettoken as a client.
 
 %build
 # starts out in %{name}-src-%{tarball_version}
-cd go/src
-./make.bash
-cd ../..
+#cd go/src
+#./make.bash
+#cd ../..
 export GOPATH=$PWD/gopath
 export PATH=$PWD/go/bin:$GOPATH/bin:$PATH
 mkdir -p $GOPATH/bin
@@ -120,6 +120,13 @@ systemctl daemon-reload
 %attr(750, openbao,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+* Thu Mar 26 2026 Dave Dykstra <dwd@fnal.gov> 2.2.0-1
+- Change the startup loop when joining a raft cluster to wait for a leader
+  to be chosen, not just a non-zero exit code from list-peers.
+- Remove inclusion of golang source code.
+- Update minimum required openbao to 2.5.0.
+- Update minimum required openbao-vault-plugin-oauthapp to 3.3.0.
+
 * Wed Oct  8 2025 Dave Dykstra <dwd@fnal.gov> 2.1.0-3
 - Avoid showing a disturbing error message from find if the vault user id
   does not exist, by redirecting stderr from find to /dev/null.
