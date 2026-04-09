@@ -73,7 +73,7 @@ Each list item under that should have the following keywords:
 | clientid | OIDC Client ID |
 | secret  | OIDC Client secret |
 | url  | Issuer URL |
-| callbackmode | `direct` or `device` (optional, default `device`) |
+| callbackmode | `direct`, `noconfirm`, or `device` (optional, default `device`) |
 | credclaim | OIDC id token claim to use for credential key |
 | kerbservice | Kerberos service name (optional) |
 | roles | List of roles |
@@ -102,6 +102,25 @@ On the other hand if you want to support ssh instead of kerberos, the
 `credclaim` is still needed but ssh authentication will use whatever
 value the OIDC issuer includes in that claim.
 
+IMPORTANT SECURITY CONSIDERATION related to `callbackmode`:
+Since this service shares an OIDC client and secret with multiple users,
+there is nothing stopping attackers from beginning authentication flows.
+If they are then able to fool a previously authenticated user to click
+on an arbitrary hyperlink (which would be similar to a Cross-Site
+Scripting attack), they may be able to obtain tokens using that user's
+privileges.  For this reason, it is important for the user to always be
+presented with a prompt in their web browser during OIDC authentication.
+However, token issuers often remember previous authorizations as a
+convenience to the users and so authorize immediately without a prompt.
+That is why with the `direct` callback mode, OpenBao inserts its own
+confirmation prompt, but there is nowhere it can insert a prompt with
+the `device` callback mode because that is entirely under the control of
+the token issuer.  So when using the `device` callback mode, the token
+issuer must always insert its own confirmation prompt.  On the other
+hand, if the token issuer always inserts a prompt when you are using the
+`direct` callback mode, you may remove the additional OpenBao
+confirmation prompt by switching to the `noconfirm` callback mode.
+
 Each role under roles should have the following keywords:
 
 `roles` keywords
@@ -126,7 +145,7 @@ issuers:
   - name: cilogon
     clientid: xxx
     url: https://cilogon.org
-    callbackmode: direct
+    callbackmode: noconfirm
     credclaim: wlcg.credkey
     roles:
       - name: default
@@ -170,8 +189,8 @@ issuers:
 
 Note that the "device" callback mode is not available by default on the
 wlcg token issuer, you have to request it from the administrator.  If using
-the "direct" method (which is the standard OIDC code flow), register
-callback URIs of the form
+the "direct" or "noconfirm" mode (which use the standard OIDC code flow),
+register callback URIs of the form
 ```
 https://<your.host.name>:8200/v1/auth/oidc-<issuer>/oidc/callback
 ```

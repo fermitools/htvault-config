@@ -595,6 +595,11 @@ EOF
             SSHPOLICY=",sshregister-${ISSUER}"
         fi
         if ! $ENABLED || $CHANGED || [ "$scopes" != "$old_scopes" ] || [ ! -f policies/${POLICYNAME}.hcl.old ]; then
+            oidc_disable_confirmation=false
+            if [ "$callbackmode" = noconfirm ]; then
+                callbackmode=direct
+                oidc_disable_confirmation=true
+            fi
             # use some json input in order to have nested parameters
             echo "Configuring $VPATH role $ROLE with scopes $scopes"
             vault write $VPATH/role/$ROLE - \
@@ -605,6 +610,7 @@ EOF
                 token_no_default_policy=true \
                 policies=${POLICYNAME}${SSHPOLICY},tokenops \
                 callback_mode="${callbackmode:-device}" \
+                oidc_disable_confirmation=$oidc_disable_confirmation \
                 poll_interval=3 \
                 allowed_redirect_uris="$REDIRECT_URIS" \
                 verbose_oidc_logging=true \

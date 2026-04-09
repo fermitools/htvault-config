@@ -63,6 +63,8 @@ find $GOPATH/pkg/mod -type d ! -perm -200 -print0|xargs -0 -r chmod u+w
 rm -rf $GOPATH/pkg
 
 # do the install for its side effects of caching the source files
+# NOTE: gox might be no longer needed after 2.6.0:
+# https://github.com/openbao/openbao/pull/2801
 go install github.com/mitchellh/gox@v$gox_version
 rm -f $GOPATH/bin/gox
 

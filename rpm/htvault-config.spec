@@ -1,5 +1,5 @@
 %define tarball_version 2.2
-%define openbao_version 2.5.0
+%define openbao_version 2.5.2
 %define plugin1_name vault-plugin-auth-ssh
 %define plugin1_version 0.3.4
 %define plugin2_name openbao-plugin-secrets-oauthapp
@@ -16,7 +16,7 @@
 
 Summary: Configuration for OpenBao for use with htgettoken client
 Name: htvault-config
-Version: 2.2.0
+Version: 2.3.0
 Release: 1%{?dist}
 Group: Applications/System
 License: BSD
@@ -120,6 +120,10 @@ systemctl daemon-reload
 %attr(750, openbao,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+* Thu Apr 09 2026 Dave Dykstra <dwd@fnal.gov> 2.3.0-1
+- Add `noconfirm` callbackmode.
+- Update minimum required openbao to 2.5.2.
+
 * Thu Mar 26 2026 Dave Dykstra <dwd@fnal.gov> 2.2.0-1
 - Change the startup loop when joining a raft cluster to wait for a leader
   to be chosen, not just a non-zero exit code from list-peers.
