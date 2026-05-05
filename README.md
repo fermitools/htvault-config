@@ -513,11 +513,19 @@ issuer and `-i <role>` to select a specific role.
 
 ### Corrupted database
 
-If a vault database somehow gets corrupted and unable to be unsealed
+If a vault database on a non-high availability installation somehow gets
+corrupted and unable to be unsealed
 according to the `startlog`, a way to get it in operation again is to
 remove everything from `/var/lib/htvault-config` (including `.cache`)
-and start vault again.  All the stored secrets will be lost.  If it's
-a high availability cluster, also clear out the other machines.
+and start vault again.  All the stored secrets will be lost.
+
+If the same problem happens on one node of a high availability cluster,
+on that node stop vault and remove everything in `/var/lib/htvault-config`
+except for `vaultseal.txt`.  On the leader, remove the machine from
+the list of peers with `vault operator raft remove-peer <peername>`
+where `<peername>` is the name of the machine that was broken.
+Then start vault on the machine that was broken and it should rejoin the
+cluster and get its data populated from the leader.
 
 ### Lost quorum
 
