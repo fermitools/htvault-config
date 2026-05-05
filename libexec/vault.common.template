@@ -3,10 +3,6 @@
  */
 
 plugin_directory = "/usr/libexec/htvault-config/plugins"
-# The docs say to use setcap on vault and plugins instead of 
-#  disable_mlock in production
-# https://www.vaultproject.io/docs/configuration/#inlinecode-disable_mlock
-disable_mlock = true
 ui = true
 
 listener "tcp" {

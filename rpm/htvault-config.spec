@@ -120,6 +120,9 @@ systemctl daemon-reload
 %attr(750, openbao,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+# - Delete the "disable_mlock" configuration option in vault.hcl because
+#   openbao does not support it.
+
 * Thu Apr 09 2026 Dave Dykstra <dwd@fnal.gov> 2.3.0-1
 - Add `noconfirm` callbackmode.
 - Update minimum required openbao to 2.5.2.
