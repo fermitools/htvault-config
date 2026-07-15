@@ -1,5 +1,7 @@
+%define openbao_version 2.6.0
+# Update the tarball_version if any of the other versions change,
+# because that requires a new source tarball
 %define tarball_version 2.2
-%define openbao_version 2.5.2
 %define plugin1_name vault-plugin-auth-ssh
 %define plugin1_version 0.3.4
 %define plugin2_name openbao-plugin-secrets-oauthapp
@@ -16,7 +18,7 @@
 
 Summary: Configuration for OpenBao for use with htgettoken client
 Name: htvault-config
-Version: 2.3.0
+Version: 2.4.0
 Release: 1%{?dist}
 Group: Applications/System
 License: BSD
@@ -120,10 +122,12 @@ systemctl daemon-reload
 %attr(750, openbao,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
-# - Fix rate limiting configuration to work in a cluster when the leader is
-#   not the first machine (that is, the master)
-# - Delete the "disable_mlock" configuration option in vault.hcl because
-#   openbao does not support it.
+* Wed Jul 15 2026 Dave Dykstra <dwd@fnal.gov> 2.4.0-1
+- Fix rate limiting configuration to work in a cluster when the leader is
+  not the first machine (that is, the master).
+- Delete the "disable_mlock" configuration option in vault.hcl because
+  openbao does not support it.
+- Update minimum required openbao to 2.6.0.
 
 * Thu Apr 09 2026 Dave Dykstra <dwd@fnal.gov> 2.3.0-1
 - Add `noconfirm` callbackmode.
