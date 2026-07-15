@@ -120,6 +120,8 @@ systemctl daemon-reload
 %attr(750, openbao,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+# - Fix rate limiting configuration to work in a cluster when the leader is
+#   not the first machine (that is, the master)
 # - Delete the "disable_mlock" configuration option in vault.hcl because
 #   openbao does not support it.
 
