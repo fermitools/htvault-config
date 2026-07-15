@@ -10,4 +10,5 @@ storage "raft" {
 	}
 	node_id = "<myfqdn>"
 }
+api_addr = "https://<myfqdn>:8200"
 cluster_addr = "https://<myfqdn>:8201"

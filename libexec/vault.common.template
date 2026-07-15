@@ -19,8 +19,6 @@ listener "tcp" {
 	tls_cipher_suites = "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"
 }
 
-api_addr = "http://localhost:8202"
-
 # 1 week
 #default_lease_ttl = "168h"
 # The IGTF max for unencrypted user certs, about 11.5 days
