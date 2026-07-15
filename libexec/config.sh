@@ -27,11 +27,12 @@ fi
 echo
 echo "Starting vault configuration at `date`"
 
+ETC=/etc/htvault-config
 LIBEXEC=/usr/libexec/htvault-config
 VARLIB=/var/lib/htvault-config
 cd $VARLIB
 
-if $LIBEXEC/parseconfig.py /etc/htvault-config/config.d > config.json.new; then
+if $LIBEXEC/parseconfig.py $ETC/config.d > config.json.new; then
     if [ -f config.json ]; then
         mv config.json config.json.old
     fi
@@ -46,7 +47,7 @@ if $LIBEXEC/parseconfig.py /etc/htvault-config/config.d > config.json.new; then
         exit 1
     fi
 else
-    echo "Failure converting /etc/htvault-config/config.d/*.yaml to config.json" >&2
+    echo "Failure converting $ETC/config.d/*.yaml to config.json" >&2
     exit 1
 fi
 
@@ -163,6 +164,12 @@ if [ -n "$_old_cluster_peer2" ] && [ "$_cluster_peer2" != "$_old_cluster_peer2" 
 fi
 
 ROOTTOKEN="X-Vault-Token: $(<~/.vault-token)"
+CURLOPTS="-sSL"
+if [ -f $ETC/cacert.pem ]; then
+    # these are needed for a cluster when the leader is not the master
+    CURLOPTS="$CURLOPTS --cacert $ETC/cacert.pem"
+    export VAULT_CACERT=$ETC/cacert.pem
+fi
 for RATELIMIT in $_old_ratelimits; do
     if ! [[ " $_ratelimits " == *" $RATELIMIT "* ]]; then
         echo "Deleting $RATELIMIT rate limit"
@@ -171,7 +178,7 @@ for RATELIMIT in $_old_ratelimits; do
         # and there's no way to disable it only for localhost
         echo "Temporarily disabling $RATELIMIT rate limit"
     fi
-    echo "$ROOTTOKEN" | curl -sSL -H @- -X DELETE $VAULT_ADDR/v1/sys/quotas/rate-limit/"$RATELIMIT"
+    echo "$ROOTTOKEN" | curl $CURLOPTS -H @- -X DELETE $VAULT_ADDR/v1/sys/quotas/rate-limit/"$RATELIMIT"
 done
 ENBLEDMODS=""
 updateenabledmods()
@@ -682,7 +689,7 @@ for RATELIMIT in $_ratelimits; do
     else
         echo "Restoring $RATELIMIT rate limit"
     fi
-    echo "$ROOTTOKEN" | curl -sSL -H @- -X POST -d @/dev/fd/3 $VAULT_ADDR/v1/sys/quotas/rate-limit/"$RATELIMIT" 3<<EOF
+    echo "$ROOTTOKEN" | curl $CURLOPTS -H @- -X POST -d @/dev/fd/3 $VAULT_ADDR/v1/sys/quotas/rate-limit/"$RATELIMIT" 3<<EOF
     {
         "path" : "$path",
         "rate" : "$rate",

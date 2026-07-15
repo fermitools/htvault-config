@@ -1,3 +1,4 @@
 backend "file" {
 	path = "/var/lib/htvault-config"
 }
+api_addr = "http://localhost:8202"
