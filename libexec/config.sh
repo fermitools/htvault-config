@@ -171,7 +171,7 @@ for RATELIMIT in $_old_ratelimits; do
         # and there's no way to disable it only for localhost
         echo "Temporarily disabling $RATELIMIT rate limit"
     fi
-    curl -sS -H "$ROOTTOKEN" -X DELETE $VAULT_ADDR/v1/sys/quotas/rate-limit/"$RATELIMIT"
+    echo "$ROOTTOKEN" | curl -sSL -H @- -X DELETE $VAULT_ADDR/v1/sys/quotas/rate-limit/"$RATELIMIT"
 done
 ENBLEDMODS=""
 updateenabledmods()
@@ -682,7 +682,7 @@ for RATELIMIT in $_ratelimits; do
     else
         echo "Restoring $RATELIMIT rate limit"
     fi
-    curl -sS -H "$ROOTTOKEN" -X POST -d @- $VAULT_ADDR/v1/sys/quotas/rate-limit/"$RATELIMIT" <<EOF
+    echo "$ROOTTOKEN" | curl -sSL -H @- -X POST -d @/dev/fd/3 $VAULT_ADDR/v1/sys/quotas/rate-limit/"$RATELIMIT" 3<<EOF
     {
         "path" : "$path",
         "rate" : "$rate",
