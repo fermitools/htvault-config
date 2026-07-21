@@ -12,3 +12,6 @@ storage "raft" {
 }
 api_addr = "https://<myfqdn>:8200"
 cluster_addr = "https://<myfqdn>:8201"
+/* At least until https://github.com/openbao/openbao/pull/3052 */
+/* along with corresponding client updates provides consistency */
+disable_standby_reads = true
