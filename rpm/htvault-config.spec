@@ -122,6 +122,13 @@ systemctl daemon-reload
 %attr(750, openbao,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+# - Enable new openbao 2.6 option allow_slashes_in_identity_templates
+#   for kerberos.  This allows multipart kerberos principals to be used
+#   again.
+# - Disable reads from standby nodes for now, until consistency control is
+#   made available.
+# - Increase the timeout on config.sh.
+
 * Wed Jul 15 2026 Dave Dykstra <dwd@fnal.gov> 2.4.0-1
 - Fix rate limiting configuration to work in a cluster when the leader is
   not the first machine (that is, the master).
