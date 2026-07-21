@@ -122,6 +122,9 @@ systemctl daemon-reload
 %attr(750, openbao,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+# - Enable new openbao 2.6 option allow_slashes_in_identity_templates
+#   for kerberos.  This allows multipart kerberos principals to be used
+#   again.
 # - Disable reads from standby nodes for now, until consistency control is
 #   made available.
 # - Increase the timeout on config.sh.

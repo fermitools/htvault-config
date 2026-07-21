@@ -235,13 +235,21 @@ process_policy()
 {
     POLICY=$1
     if [ ! -f policies/${POLICY}.hcl ] || \
-            ! cmp -s policies/${POLICY}.hcl.new policies/${POLICY}.hcl; then
+            ! cmp -s policies/${POLICY}.hcl.new policies/${POLICY}.hcl || \
+            ([[ "${POLICY}" == kerberos* ]] && \
+             [ "$(vault read -format=json sys/policies/acl/${POLICY} 2>/dev/null | \
+                 jq -r .data.allow_slashes_in_identity_templates)" != true ]); then
         if [ -f policies/${POLICY}.hcl ]; then
             mv policies/${POLICY}.hcl policies/${POLICY}.hcl.old
         fi
         mv policies/${POLICY}.hcl.new policies/${POLICY}.hcl
 	chmod a-w policies/${POLICY}.hcl
-	vault policy write ${POLICY} policies/${POLICY}.hcl
+        if [[ "${POLICY}" == kerberos* ]]; then
+            # allow slashes in the kerberos principal
+            vault write sys/policies/acl/${POLICY} policy=@policies/${POLICY}.hcl allow_slashes_in_identity_templates=true
+        else
+            vault policy write ${POLICY} policies/${POLICY}.hcl
+        fi
     else
         rm -f policies/${POLICY}.hcl.new
         if [ ! -f policies/${POLICY}.hcl.old ]; then
