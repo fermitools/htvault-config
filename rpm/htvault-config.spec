@@ -122,6 +122,8 @@ systemctl daemon-reload
 %attr(750, openbao,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
+# Increase the timeout on config.sh.
+
 * Wed Jul 15 2026 Dave Dykstra <dwd@fnal.gov> 2.4.0-1
 - Fix rate limiting configuration to work in a cluster when the leader is
   not the first machine (that is, the master).
