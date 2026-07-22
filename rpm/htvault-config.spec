@@ -1,12 +1,13 @@
-%define openbao_version 2.6.0
+%define openbao_version 2.6.1
 # Update the tarball_version if any of the other versions change,
 # because that requires a new source tarball
-%define tarball_version 2.2
+%define tarball_version 2.4
 %define plugin1_name vault-plugin-auth-ssh
 %define plugin1_version 0.3.4
+%define plugin1_patch1 28
 %define plugin2_name openbao-plugin-secrets-oauthapp
 %define plugin2_oldname vault-plugin-secrets-oauthapp
-%define plugin2_version 3.3.0
+%define plugin2_version 3.4.0
 %define gox_version 1.0.1
 
 # This is to avoid
@@ -18,7 +19,7 @@
 
 Summary: Configuration for OpenBao for use with htgettoken client
 Name: htvault-config
-Version: 2.4.0
+Version: 2.4.1
 Release: 1%{?dist}
 Group: Applications/System
 License: BSD
@@ -122,12 +123,16 @@ systemctl daemon-reload
 %attr(750, openbao,root) %dir %{_localstatedir}/log/%{name}
 
 %changelog
-# - Enable new openbao 2.6 option allow_slashes_in_identity_templates
-#   for kerberos.  This allows multipart kerberos principals to be used
-#   again.
-# - Disable reads from standby nodes for now, until consistency control is
-#   made available.
-# - Increase the timeout on config.sh.
+* Tue Jul 22 2026 Dave Dykstra <dwd@fnal.gov> 2.4.1-1
+- Enable new openbao 2.6 option allow_slashes_in_identity_templates
+  for kerberos.  This allows multipart kerberos principals to be used
+  again.
+- Disable reads from standby nodes for now, until consistency control is
+  made available.
+- Increase the timeout on config.sh.
+- Update minimum openbao to 2.6.1.
+- Update openbao-plugin-secrets-oauthapp to 3.4.0 and add a patch for
+  PR 28 to vault-plugin-auth-ssh.
 
 * Wed Jul 15 2026 Dave Dykstra <dwd@fnal.gov> 2.4.0-1
 - Fix rate limiting configuration to work in a cluster when the leader is
